@@ -2,7 +2,7 @@
 
 A tiny, type-safe URL builder and matcher powered by the [URLPattern API](https://developer.mozilla.org/en-US/docs/Web/API/URLPattern). Resolves base URLs automatically from your environment so you never have to interpolate template strings into `fetch()` calls.
 
-- **Zero dependencies** — single file, ~380 lines
+- **Zero dependencies** — single file, ~470 lines
 - **Type-safe path params** — extracted from string literals at compile time
 - **Runtime guards** — throws on unreplaced params even when types are bypassed
 - **Environment-aware** — auto-detects base URL from Vite, Deno, Bun, Node, or browser
@@ -92,6 +92,17 @@ route("/api/users/:id", {
   base: "https://users.internal",
 });
 // → "https://users.internal/api/users/42"
+
+// Optional param — omit or provide
+route("/api/bookmarks/:id?", {});           // → ".../api/bookmarks"
+route("/api/bookmarks/:id?", { id: "42" }); // → ".../api/bookmarks/42"
+
+// Wildcard — zero-or-more segments (slashes preserved)
+route("/files/:path*", { path: "docs/readme.md" }); // → ".../files/docs/readme.md"
+route("/files/:path*");                              // → ".../files"
+
+// Wildcard — one-or-more segments (required)
+route("/files/:path+", { path: "docs/readme.md" }); // → ".../files/docs/readme.md"
 ```
 
 ### `matchRoute(pattern, url)`
@@ -160,7 +171,22 @@ route("/api/bookmarks/:id", { id: "42" });          // ✅
 route("/api/bookmarks/:id", { name: "oops" });       // ❌ type error
 route("/api/:org/bookmarks/:id", { org: "acme" });   // ❌ missing `id`
 route("/api/bookmarks");                              // ✅ no params required
+route("/api/bookmarks/:id?");                         // ✅ optional — args can be omitted
+route("/api/:org/bookmarks/:id?", { org: "acme" });  // ✅ only required params needed
 ```
+
+### Optional and wildcard modifiers
+
+Modifiers follow the [URLPattern](https://developer.mozilla.org/en-US/docs/Web/API/URLPattern) syntax:
+
+| Modifier | Meaning | Type behavior |
+|----------|---------|---------------|
+| `:id` | Required, single segment | Required key |
+| `:id?` | Optional, single segment | Optional key |
+| `:path*` | Zero-or-more segments | Optional key, `/` preserved |
+| `:path+` | One-or-more segments | Required key, `/` preserved |
+
+When all params are optional (`?` or `*`), the options argument can be omitted entirely.
 
 At runtime, if a `:param` survives replacement (e.g. the pattern was typed as `string`), `route()` throws:
 
@@ -196,6 +222,7 @@ deno publish       # publish to JSR
 ```ts
 import type {
   ParamValue,        // string | number
+  StripModifier,     // strips ?, *, + suffixes from param names
   ExtractParams,     // template literal type — extracts ":param" names
   RouteExtra,        // extra options (search, hash, relative, base)
   RouteOptions,      // options union for route()

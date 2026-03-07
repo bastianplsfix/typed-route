@@ -27,6 +27,7 @@
 // Types
 // ---------------------------------------------------------------------------
 
+/** A path parameter value — strings or numbers are accepted. */
 export type ParamValue = string | number;
 
 /** Strip modifier suffixes (`?`, `*`, `+`) from a param name. */
@@ -91,8 +92,11 @@ export type RouteOptions<K extends string = string, T extends string = string> =
         : | (Record<RequiredParams<T>, ParamValue> & Partial<Record<OptionalParams<T>, ParamValue>>)
           | ({ path: Record<RequiredParams<T>, ParamValue> & Partial<Record<OptionalParams<T>, ParamValue>> } & RouteExtra);
 
+/** Result of matching a URL against a pattern via {@linkcode matchRoute}. */
 export interface MatchResult<K extends string = string> {
+  /** Extracted path parameters. */
   path: Record<K, string>;
+  /** Extracted search (query) parameters. */
   search: Record<string, string | string[]>;
 }
 
