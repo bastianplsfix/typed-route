@@ -43,18 +43,26 @@ export type ExtractParams<T extends string> =
       ? Param
       : never;
 
+/** Extra options available in the explicit `{ path, ... }` form. */
+export interface RouteExtra {
+  search?: Record<string, string | string[]>;
+  /** URL fragment (without the `#`). */
+  hash?: string;
+  /** Return only the pathname + search + hash, without the base URL. */
+  relative?: boolean;
+  /** Override the base URL for this call only. */
+  base?: string;
+}
+
 /**
  * When the pattern has no params, options are optional (search-only or omitted).
  * When it has params, you must provide them — either as a flat object or via `{ path }`.
  */
 export type RouteOptions<K extends string = string> =
   [K] extends [never]
-    ? { search?: Record<string, string | string[]> } | undefined
+    ? RouteExtra | undefined
     : | Record<K, ParamValue>
-      | {
-          path: Record<K, ParamValue>;
-          search?: Record<string, string | string[]>;
-        };
+      | ({ path: Record<K, ParamValue> } & RouteExtra);
 
 export interface MatchResult<K extends string = string> {
   path: Record<K, string>;
@@ -136,14 +144,14 @@ export function configureRoute(config: RouteConfig): void {
 export function route<T extends string>(
   pattern: T,
   ...[options]: [ExtractParams<T>] extends [never]
-    ? [options?: { search?: Record<string, string | string[]> }]
+    ? [options?: RouteExtra]
     : [options: RouteOptions<ExtractParams<T>>]
 ): string {
-  const base = getBase();
-  const { path, search } = normalizeOptions(options);
+  const normalized = normalizeOptions(options);
+  const base = normalized.base ? strip(normalized.base) : getBase();
 
   let pathname = pattern as string;
-  for (const [key, value] of Object.entries(path)) {
+  for (const [key, value] of Object.entries(normalized.path)) {
     const encoded = isEncoded(String(value))
       ? String(value)
       : encodeURIComponent(String(value));
@@ -160,7 +168,7 @@ export function route<T extends string>(
 
   const url = new URL(pathname, base);
 
-  for (const [key, value] of Object.entries(search)) {
+  for (const [key, value] of Object.entries(normalized.search)) {
     if (Array.isArray(value)) {
       for (const v of value) url.searchParams.append(key, v);
     } else {
@@ -168,7 +176,18 @@ export function route<T extends string>(
     }
   }
 
-  return normalizeTrailingSlash(url.toString());
+  if (normalized.hash) {
+    url.hash = normalized.hash;
+  }
+
+  const full = normalizeTrailingSlash(url.toString());
+
+  if (normalized.relative) {
+    const parsed = new URL(full);
+    return parsed.pathname + parsed.search + parsed.hash;
+  }
+
+  return full;
 }
 
 // ---------------------------------------------------------------------------
@@ -222,7 +241,7 @@ export interface BoundRoute<T extends string> {
   /** Build a URL from this pattern. Same args as `route()` minus the pattern. */
   (
     ...args: [ExtractParams<T>] extends [never]
-      ? [options?: { search?: Record<string, string | string[]> }]
+      ? [options?: RouteExtra]
       : [options: RouteOptions<ExtractParams<T>>]
   ): string;
 
@@ -299,19 +318,35 @@ function resolveBase(config: RouteConfig): string {
   return strip(config.fallback ?? "http://localhost:3000");
 }
 
-function normalizeOptions(options?: RouteOptions<string> | { search?: Record<string, string | string[]> }): {
+interface NormalizedOptions {
   path: Record<string, ParamValue>;
   search: Record<string, string | string[]>;
-} {
+  hash?: string;
+  relative?: boolean;
+  base?: string;
+}
+
+const EXTRA_KEYS = new Set(["path", "search", "hash", "relative", "base"]);
+
+function normalizeOptions(options?: RouteOptions<string> | RouteExtra): NormalizedOptions {
   if (!options) return { path: {}, search: {} };
 
-  // Explicit shape: has `path` or `search` key
-  if ("path" in options || "search" in options) {
+  // Explicit shape: has any known extra key
+  if (Object.keys(options).some((k) => EXTRA_KEYS.has(k))) {
     const explicit = options as {
       path?: Record<string, ParamValue>;
       search?: Record<string, string | string[]>;
+      hash?: string;
+      relative?: boolean;
+      base?: string;
     };
-    return { path: explicit.path ?? {}, search: explicit.search ?? {} };
+    return {
+      path: explicit.path ?? {},
+      search: explicit.search ?? {},
+      hash: explicit.hash,
+      relative: explicit.relative,
+      base: explicit.base,
+    };
   }
 
   // Flat object → all path params

@@ -308,3 +308,140 @@ Deno.test("configureRoute: strips trailing slash from base", () => {
   configureRoute({ base: "https://api.example.com/" });
   assertEquals(route("/bookmarks"), "https://api.example.com/bookmarks");
 });
+
+// ---------------------------------------------------------------------------
+// hash
+// ---------------------------------------------------------------------------
+
+Deno.test("hash: appends fragment to URL", () => {
+  setup();
+  assertEquals(
+    route("/docs", { hash: "installation" }),
+    "http://localhost:3000/docs#installation",
+  );
+});
+
+Deno.test("hash: with path params", () => {
+  setup();
+  assertEquals(
+    route("/docs/:section", {
+      path: { section: "api" },
+      hash: "route",
+    }),
+    "http://localhost:3000/docs/api#route",
+  );
+});
+
+Deno.test("hash: with search and path params", () => {
+  setup();
+  assertEquals(
+    route("/docs/:section", {
+      path: { section: "api" },
+      search: { v: "2" },
+      hash: "route",
+    }),
+    "http://localhost:3000/docs/api?v=2#route",
+  );
+});
+
+// ---------------------------------------------------------------------------
+// relative
+// ---------------------------------------------------------------------------
+
+Deno.test("relative: returns pathname only", () => {
+  setup();
+  assertEquals(
+    route("/api/bookmarks/:id", {
+      path: { id: "42" },
+      relative: true,
+    }),
+    "/api/bookmarks/42",
+  );
+});
+
+Deno.test("relative: includes search params", () => {
+  setup();
+  assertEquals(
+    route("/api/bookmarks", {
+      search: { page: "1" },
+      relative: true,
+    }),
+    "/api/bookmarks?page=1",
+  );
+});
+
+Deno.test("relative: includes hash", () => {
+  setup();
+  assertEquals(
+    route("/docs/:section", {
+      path: { section: "api" },
+      hash: "top",
+      relative: true,
+    }),
+    "/docs/api#top",
+  );
+});
+
+Deno.test("relative: includes search and hash", () => {
+  setup();
+  assertEquals(
+    route("/docs", {
+      search: { v: "2" },
+      hash: "install",
+      relative: true,
+    }),
+    "/docs?v=2#install",
+  );
+});
+
+Deno.test("relative: no params pattern", () => {
+  setup();
+  assertEquals(
+    route("/api/health", { relative: true }),
+    "/api/health",
+  );
+});
+
+// ---------------------------------------------------------------------------
+// per-call base
+// ---------------------------------------------------------------------------
+
+Deno.test("base: overrides global config", () => {
+  setup();
+  assertEquals(
+    route("/api/users/:id", {
+      path: { id: "42" },
+      base: "https://users.internal",
+    }),
+    "https://users.internal/api/users/42",
+  );
+});
+
+Deno.test("base: strips trailing slash", () => {
+  setup();
+  assertEquals(
+    route("/api/users", { base: "https://users.internal/" }),
+    "https://users.internal/api/users",
+  );
+});
+
+Deno.test("base: no params pattern", () => {
+  setup();
+  assertEquals(
+    route("/health", { base: "https://other.service" }),
+    "https://other.service/health",
+  );
+});
+
+Deno.test("base: combined with search and hash", () => {
+  setup();
+  assertEquals(
+    route("/api/bookmarks/:id", {
+      path: { id: "42" },
+      search: { fields: "title" },
+      hash: "details",
+      base: "https://api.prod.com",
+    }),
+    "https://api.prod.com/api/bookmarks/42?fields=title#details",
+  );
+});

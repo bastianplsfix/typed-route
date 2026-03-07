@@ -33,6 +33,7 @@ export {
 export type {
   ParamValue,
   ExtractParams,
+  RouteExtra,
   RouteOptions,
   MatchResult,
   BoundRoute,

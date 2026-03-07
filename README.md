@@ -71,6 +71,27 @@ route("/api/bookmarks", { search: { tag: ["a", "b"] } });
 // No params
 route("/api/health");
 // → "http://localhost:3000/api/health"
+
+// Hash fragment
+route("/docs/:section", {
+  path: { section: "api" },
+  hash: "route",
+});
+// → "http://localhost:3000/docs/api#route"
+
+// Relative (pathname only, no base URL)
+route("/api/bookmarks/:id", {
+  path: { id: "42" },
+  relative: true,
+});
+// → "/api/bookmarks/42"
+
+// Per-call base URL override
+route("/api/users/:id", {
+  path: { id: "42" },
+  base: "https://users.internal",
+});
+// → "https://users.internal/api/users/42"
 ```
 
 ### `matchRoute(pattern, url)`
@@ -176,6 +197,7 @@ deno publish       # publish to JSR
 import type {
   ParamValue,        // string | number
   ExtractParams,     // template literal type — extracts ":param" names
+  RouteExtra,        // extra options (search, hash, relative, base)
   RouteOptions,      // options union for route()
   MatchResult,       // return type of matchRoute()
   BoundRoute,        // return type of routePattern()
