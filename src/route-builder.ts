@@ -372,6 +372,29 @@ function resolveBase(config: RouteConfig): string {
     );
   }
 
+  // Warn in dev if using fallback localhost
+  const isFallback = !config.base && !envLookup(config.envKey ?? "API_BASE") &&
+                     !browserOrigin() && !config.fallback;
+  if (isFallback && base === "http://localhost:3000" && typeof console !== "undefined") {
+    console.warn(
+      "[typed-route] No API_BASE configured, using fallback: http://localhost:3000. " +
+      "Set API_BASE env var or call configureRoute({ base: '...' })"
+    );
+  }
+
+  // In production, localhost is likely wrong — throw to prevent silent bugs
+  const isProduction =
+    processEnv("NODE_ENV") === "production" ||
+    importMetaEnv("PROD") === true ||
+    importMetaEnv("MODE") === "production";
+
+  if (isProduction && base.includes("localhost")) {
+    throw new Error(
+      "[typed-route] Refusing to use localhost in production. " +
+      "Set API_BASE environment variable or call configureRoute({ base: '...' })"
+    );
+  }
+
   return base;
 }
 
