@@ -76,11 +76,11 @@ Deno.test("route: encodes path params", () => {
   );
 });
 
-Deno.test("route: skips encoding for already-encoded params", () => {
+Deno.test("route: always encodes params (no pre-encoded pass-through)", () => {
   setup();
   assertEquals(
     route("/api/search/:query", { query: "hello%20world" }),
-    "http://localhost:3000/api/search/hello%20world",
+    "http://localhost:3000/api/search/hello%2520world",
   );
 });
 
@@ -596,24 +596,31 @@ Deno.test("round-trip: wildcard param", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Edge cases: isEncoded safety
+// Edge cases: encoding always applied
 // ---------------------------------------------------------------------------
 
-Deno.test("encoding: handles invalid percent sequences without throwing", () => {
+Deno.test("encoding: percent signs are always encoded", () => {
   setup();
-  // "100%natural" contains an invalid percent sequence — should not throw
   assertEquals(
     route("/api/search/:query", { query: "100%natural" }),
     "http://localhost:3000/api/search/100%25natural",
   );
 });
 
-Deno.test("encoding: plain string without percent is not treated as encoded", () => {
+Deno.test("encoding: spaces are always encoded", () => {
   setup();
   assertEquals(
     route("/api/search/:query", { query: "hello world" }),
     "http://localhost:3000/api/search/hello%20world",
   );
+});
+
+Deno.test("encoding: literal %20 round-trips correctly", () => {
+  setup();
+  const url = route("/api/search/:query", { query: "%20" });
+  assertEquals(url, "http://localhost:3000/api/search/%2520");
+  const result = matchRoute("/api/search/:query", url);
+  assertEquals(result?.path, { query: "%20" });
 });
 
 // ---------------------------------------------------------------------------

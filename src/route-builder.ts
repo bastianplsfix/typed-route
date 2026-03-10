@@ -474,9 +474,7 @@ function replaceParams(
     /\/:([a-zA-Z_]\w*)\?/g,
     (_, name) => {
       if (name in params && params[name] !== undefined) {
-        const v = String(params[name]);
-        const encoded = isEncoded(v) ? v : encodeURIComponent(v);
-        return `/${encoded}`;
+        return `/${encodeURIComponent(String(params[name]))}`;
       }
       return "";
     },
@@ -487,11 +485,10 @@ function replaceParams(
     /:([a-zA-Z_]\w*)([*+])/g,
     (match, name, modifier) => {
       if (name in params && params[name] !== undefined) {
-        const v = String(params[name]);
         // Encode each segment individually, preserving `/`
-        return v
+        return String(params[name])
           .split("/")
-          .map((seg) => (isEncoded(seg) ? seg : encodeURIComponent(seg)))
+          .map((seg) => encodeURIComponent(seg))
           .join("/");
       }
       if (modifier === "*") return "";
@@ -503,9 +500,7 @@ function replaceParams(
   // Handle regular required params — use a regex with word boundary to avoid
   // replacing inside already-substituted values or partial matches.
   for (const [key, value] of Object.entries(params)) {
-    const encoded = isEncoded(String(value))
-      ? String(value)
-      : encodeURIComponent(String(value));
+    const encoded = encodeURIComponent(String(value));
     const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     pathname = pathname.replace(
       new RegExp(`:${escapedKey}(?=[\\/?#]|$)(?![?*+])`, "g"),
@@ -557,25 +552,6 @@ function normalizeTrailingSlash(url: string): string {
   return normalized + suffix;
 }
 
-/**
- * Check if a value is already percent-encoded to avoid double-encoding.
- * e.g. "hello%20world" → true, "hello world" → false
- *
- * Only returns true when the value contains valid percent-encoded sequences
- * (e.g. `%20`, `%2F`). Values with invalid sequences like `"100%natural"`
- * are treated as unencoded to avoid decoding errors.
- */
-function isEncoded(value: string): boolean {
-  // Fast path: no percent sign means it can't be encoded
-  if (!value.includes("%")) return false;
-
-  try {
-    return value !== decodeURIComponent(value);
-  } catch {
-    // Invalid percent sequence (e.g. "%natural") — treat as not encoded
-    return false;
-  }
-}
 
 function importMetaEnv(key: string): string | undefined {
   try {
