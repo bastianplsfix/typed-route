@@ -257,10 +257,15 @@ export function matchRoute<T extends string>(
   // auto-decodes). Without this, a round-trip route()→matchRoute() returns
   // "%20" instead of " ".
   const path = Object.fromEntries(
-    Object.entries(result.pathname.groups ?? {}).map(([k, v]) => [
-      k,
-      v ? decodeURIComponent(v) : v,
-    ]),
+    Object.entries(result.pathname.groups ?? {}).map(([k, v]) => {
+      if (!v) return [k, v];
+      try {
+        return [k, decodeURIComponent(v)];
+      } catch {
+        // Malformed percent sequence (e.g. "%ZZ") — return raw value
+        return [k, v];
+      }
+    }),
   ) as Record<ExtractParams<T>, string>;
 
   const search: Record<string, string | string[]> = {};

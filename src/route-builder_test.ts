@@ -803,3 +803,16 @@ Deno.test("replaceParams: duplicate param name replaced in all positions", () =>
     "http://localhost:3000/api/42/copy/42",
   );
 });
+
+// ---------------------------------------------------------------------------
+// Bug fix: matchRoute handles malformed percent sequences without crashing
+// ---------------------------------------------------------------------------
+
+Deno.test("matchRoute: handles malformed percent sequence without throwing", () => {
+  setup();
+  const result = matchRoute(
+    "/api/:id",
+    "http://localhost:3000/api/%ZZ",
+  );
+  assertEquals(result?.path, { id: "%ZZ" });
+});
