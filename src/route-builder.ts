@@ -285,7 +285,9 @@ export interface BoundRoute<T extends string> {
   (
     ...args: [ExtractParams<T>] extends [never]
       ? [options?: RouteExtra]
-      : [options: RouteOptions<ExtractParams<T>>]
+      : [RequiredParams<T>] extends [never]
+        ? [options?: RouteOptions<ExtractParams<T>, T> | RouteExtra]
+        : [options: RouteOptions<ExtractParams<T>, T>]
   ): string;
 
   /** Match a URL against this pattern. */
@@ -310,6 +312,10 @@ export interface BoundRoute<T extends string> {
  * ```
  */
 export function routePattern<T extends string>(pattern: T): BoundRoute<T> {
+  if (pattern && !pattern.startsWith("/")) {
+    throw new Error(`Pattern must start with "/": "${pattern}"`);
+  }
+
   // deno-lint-ignore no-explicit-any
   const fn = ((...args: [any?]) => {
     // deno-lint-ignore no-explicit-any

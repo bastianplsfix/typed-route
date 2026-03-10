@@ -716,3 +716,31 @@ Deno.test("matchRoute: decodes special characters in path params", () => {
   );
   assertEquals(result?.path, { name: "my file&data.txt" });
 });
+
+// ---------------------------------------------------------------------------
+// routePattern: optional params and eager validation
+// ---------------------------------------------------------------------------
+
+Deno.test("routePattern: optional-only pattern callable without args", () => {
+  setup();
+  const optRoute = routePattern("/api/bookmarks/:id?");
+  assertEquals(optRoute(), "http://localhost:3000/api/bookmarks");
+});
+
+Deno.test("routePattern: optional-only pattern callable with args", () => {
+  setup();
+  const optRoute = routePattern("/api/bookmarks/:id?");
+  assertEquals(
+    optRoute({ id: "42" }),
+    "http://localhost:3000/api/bookmarks/42",
+  );
+});
+
+Deno.test("routePattern: throws eagerly on pattern without leading slash", () => {
+  setup();
+  assertThrows(
+    () => routePattern("api/bookmarks" as any),
+    Error,
+    'Pattern must start with "/"',
+  );
+});
