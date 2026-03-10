@@ -188,6 +188,30 @@ Modifiers follow the [URLPattern](https://developer.mozilla.org/en-US/docs/Web/A
 
 When all params are optional (`?` or `*`), the options argument can be omitted entirely.
 
+**Why does my param need `?` to be optional?**
+
+The pattern declares your URL's contract. If you have a value that might be `undefined`, you have three options:
+
+```ts
+const userId: string | undefined = session?.userId;
+
+// ❌ Type error - pattern says :id is required, but userId might be undefined
+route("/api/users/:id", { id: userId });
+
+// ✅ Option 1: Make the pattern match reality
+route("/api/users/:id?", { id: userId });
+
+// ✅ Option 2: Guard it explicitly
+if (userId) {
+  route("/api/users/:id", { id: userId });
+}
+
+// ✅ Option 3: Provide a fallback
+route("/api/users/:id", { id: userId || "me" });
+```
+
+This is intentional — the pattern syntax should match your data's optionality. It prevents bugs where you forget to handle missing params.
+
 At runtime, if a `:param` survives replacement (e.g. the pattern was typed as `string`), `route()` throws:
 
 ```
