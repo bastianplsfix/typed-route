@@ -121,9 +121,9 @@ export interface RouteConfig {
 
   /**
    * Trailing slash behavior for built URLs.
-   * - "strip": remove trailing slashes (default)
-   * - "preserve": leave as-is
-   * @default "strip"
+   * - "strip": remove trailing slashes
+   * - "preserve": leave as-is (default)
+   * @default "preserve"
    */
   trailingSlash?: "strip" | "preserve";
 }
@@ -616,7 +616,7 @@ function normalizeTrailingSlash(url: string): string {
   // Guard against edge cases: empty strings or URLs without slashes
   if (!url || !url.includes("/")) return url;
 
-  const mode = _config.trailingSlash ?? "strip";
+  const mode = _config.trailingSlash ?? "preserve";
   if (mode === "preserve") return url;
 
   // Split into pathname vs. the rest (query + hash), preserving both.

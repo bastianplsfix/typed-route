@@ -250,7 +250,7 @@ Controlled via `configureRoute({ trailingSlash })`:
 | `"strip"`    | `/api/bookmarks`   | `/api/bookmarks`  |
 | `"preserve"` | `/api/bookmarks/`  | `/api/bookmarks`  |
 
-Default is `"strip"`.
+Default is `"preserve"` (URLs are not modified).
 
 ## Development
 
