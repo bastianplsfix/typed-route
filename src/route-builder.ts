@@ -390,6 +390,12 @@ export function routePattern<T extends string>(pattern: T): BoundRoute<T> {
   return fn;
 }
 
+/**
+ * Alias for {@linkcode routePattern}. More intuitive name following
+ * common patterns like `createContext`, `createSlice`, etc.
+ */
+export const createRoute = routePattern;
+
 // ---------------------------------------------------------------------------
 // Internals
 // ---------------------------------------------------------------------------
