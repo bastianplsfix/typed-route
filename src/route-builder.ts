@@ -364,9 +364,8 @@ export interface BoundRoute<T extends string> {
  * @throws {Error} If pattern doesn't start with "/"
  */
 export function routePattern<T extends string>(pattern: T): BoundRoute<T> {
-  if (pattern && !pattern.startsWith("/")) {
-    throw new Error(`Pattern must start with "/": "${pattern}"`);
-  }
+  // Validate pattern upfront when binding, not later when calling
+  validatePattern(pattern as string);
 
   // Use `any` internally to delegate type checking to the bound route's call signature.
   // The returned BoundRoute<T> preserves full type safety for callers.
