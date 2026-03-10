@@ -184,11 +184,17 @@ configureRoute({
 
 **Verbose logging:**
 
-Enable verbose mode for debugging:
+By default, verbose logging is **automatically enabled in development** (when `import.meta.env.DEV` or `NODE_ENV=development`) and **disabled in production**.
 
 ```ts
-// Simple: log base URL + route building
+// Auto-enabled in dev, off in prod (default behavior)
+configureRoute({}); // or just don't call configureRoute at all
+
+// Explicitly enable (even in production)
 configureRoute({ verbose: true });
+
+// Explicitly disable (even in dev)
+configureRoute({ verbose: false });
 
 // Granular control
 configureRoute({
@@ -200,7 +206,7 @@ configureRoute({
 });
 ```
 
-Example output:
+Example output (automatically shown in dev):
 ```
 [typed-route] Base URL: http://localhost:3000 (source: fallback)
 [typed-route] /api/users/:id → http://localhost:3000/api/users/42

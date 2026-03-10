@@ -129,9 +129,11 @@ export interface RouteConfig {
 
   /**
    * Enable verbose logging for debugging.
-   * - `true`: logs base URL resolution + route building (matchRoute excluded by default)
+   * - `undefined`: auto-enabled in dev (import.meta.env.DEV or NODE_ENV=development), off in production
+   * - `true`: explicitly enable (works in all environments)
+   * - `false`: explicitly disable (even in dev)
    * - `{ base, build, match }`: granular control over what gets logged
-   * @default false
+   * @default undefined (auto-detect based on environment)
    */
   verbose?:
     | boolean
@@ -440,12 +442,19 @@ export const createRoute = routePattern;
  * @internal
  */
 function shouldLog(category: "base" | "build" | "match"): boolean {
-  if (!_config.verbose) return false;
-  if (_config.verbose === true) {
+  // Auto-enable verbose in dev unless explicitly disabled
+  const isDev =
+    importMetaEnv("DEV") === true ||
+    processEnv("NODE_ENV") === "development";
+
+  const verboseConfig = _config.verbose ?? (isDev ? true : false);
+
+  if (!verboseConfig) return false;
+  if (verboseConfig === true) {
     // true = log base + build, but not match (too noisy by default)
     return category === "base" || category === "build";
   }
-  return _config.verbose[category] ?? false;
+  return verboseConfig[category] ?? false;
 }
 
 function getBase(): string {
