@@ -192,6 +192,15 @@ function validatePattern(pattern: string): void {
       `Did you mean "/:param" instead of ": param"?`
     );
   }
+
+  // Regex patterns not supported in route() - use matchRoute() instead
+  if (/:([a-zA-Z_]\w*)\([^)]+\)/.test(pattern)) {
+    throw new Error(
+      `Pattern "${pattern}" contains regex syntax (e.g., ":id(\\\\d+)"). ` +
+      `Regex patterns are only supported in matchRoute(). ` +
+      `For route(), use basic syntax or pass pattern "as any" to bypass this check.`
+    );
+  }
 }
 
 /**
