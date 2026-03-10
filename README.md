@@ -249,7 +249,6 @@ Controlled via `configureRoute({ trailingSlash })`:
 | Mode         | `/api/bookmarks/` | `/api/bookmarks` |
 | ------------ | ------------------ | ----------------- |
 | `"strip"`    | `/api/bookmarks`   | `/api/bookmarks`  |
-| `"add"`      | `/api/bookmarks/`  | `/api/bookmarks/` |
 | `"preserve"` | `/api/bookmarks/`  | `/api/bookmarks`  |
 
 Default is `"strip"`.

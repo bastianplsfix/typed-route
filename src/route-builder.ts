@@ -122,11 +122,10 @@ export interface RouteConfig {
   /**
    * Trailing slash behavior for built URLs.
    * - "strip": remove trailing slashes (default)
-   * - "add": ensure a trailing slash
    * - "preserve": leave as-is
    * @default "strip"
    */
-  trailingSlash?: "strip" | "add" | "preserve";
+  trailingSlash?: "strip" | "preserve";
 }
 
 // ---------------------------------------------------------------------------
@@ -627,12 +626,9 @@ function normalizeTrailingSlash(url: string): string {
   const pathname = url.slice(0, splitIdx);
   const suffix = url.slice(splitIdx); // includes `?query#hash` or `#hash` etc.
 
-  const normalized =
-    mode === "strip"
-      ? pathname.replace(/\/+$/, "")
-      : pathname.endsWith("/")
-        ? pathname
-        : pathname + "/";
+  // Strip mode: remove trailing slashes
+  // Preserve mode: already returned early
+  const normalized = pathname.replace(/\/+$/, "");
 
   return normalized + suffix;
 }
