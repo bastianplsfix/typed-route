@@ -108,7 +108,7 @@ export interface RouteConfig {
 
   /**
    * Env variable name to check for the base URL.
-   * Checked as: import.meta.env[key], import.meta.env[`VITE_${key}`], process.env[key].
+   * Checked as: import.meta.env[key], import.meta.env[`VITE_${key}`], Deno.env, Bun.env, process.env[key].
    * @default "API_BASE"
    */
   envKey?: string;
@@ -190,7 +190,7 @@ export function route<T extends string>(
   let pathname = replaceParams(pattern as string, normalized.path);
 
   // Runtime safety net — catches untyped patterns (e.g. `string` variables)
-  const unreplaced = pathname.match(/:([a-zA-Z_]\w*(?![?*+]))/g);
+  const unreplaced = pathname.match(/:([a-zA-Z_]\w*)\+?/g);
   if (unreplaced) {
     throw new Error(
       `Unreplaced params in "${pattern}": ${unreplaced.join(", ")}. Received: ${JSON.stringify(normalized.path)}`

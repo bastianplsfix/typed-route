@@ -736,6 +736,25 @@ Deno.test("routePattern: optional-only pattern callable with args", () => {
   );
 });
 
+Deno.test("routePattern: wildcard+ pattern callable with args", () => {
+  setup();
+  const files = routePattern("/files/:p+");
+  assertEquals(
+    files({ p: "docs/readme.md" }),
+    "http://localhost:3000/files/docs/readme.md",
+  );
+});
+
+Deno.test("unreplaced check: catches single-char wildcard+ param", () => {
+  setup();
+  const pattern = "/files/:a+" as string;
+  assertThrows(
+    () => (route as any)(pattern, {}),
+    Error,
+    ":a+",
+  );
+});
+
 Deno.test("routePattern: throws eagerly on pattern without leading slash", () => {
   setup();
   assertThrows(
