@@ -39,8 +39,135 @@ The base URL is resolved automatically:
 2. `Deno.env.get("API_BASE")`
 3. `Bun.env.API_BASE`
 4. `process.env.API_BASE`
-5. `window.location.origin`
-6. `http://localhost:3000` (fallback)
+5. `http://localhost:3000` (fallback)
+
+## Use Cases
+
+### Client-side: Building API URLs
+
+**Perfect for:** React, Vue, Svelte apps making fetch calls
+
+```ts
+import { route, createRoute } from "@bastianplsfix/typed-route";
+
+// TanStack Query
+const userRoute = createRoute("/api/users/:id");
+
+function useUser(id: string) {
+  return useSuspenseQuery({
+    queryKey: [userRoute.pattern, id],
+    queryFn: () => fetch(userRoute({ id })).then(r => r.json())
+  });
+}
+
+// Form submissions
+async function updateUser(id: string, data: UserData) {
+  await fetch(route("/api/users/:id", { id }), {
+    method: "PUT",
+    body: JSON.stringify(data)
+  });
+}
+
+// Search/filtering with query params
+const products = await fetch(
+  route("/api/products", {
+    search: { category: "shoes", size: ["9", "10"], sort: "price" }
+  })
+).then(r => r.json());
+// → /api/products?category=shoes&size=9&size=10&sort=price
+```
+
+### Server-side: Routing & URL Parsing
+
+**Perfect for:** Deno/Bun HTTP servers, middleware, webhooks
+
+```ts
+import { matchRoute, createRoute } from "@bastianplsfix/typed-route";
+
+// Define routes once
+const userRoute = createRoute("/api/users/:id");
+const productRoute = createRoute("/api/products/:id?");
+
+// Server handler
+Deno.serve((req) => {
+  const url = req.url;
+
+  // Match and extract params
+  const userMatch = userRoute.match(url);
+  if (userMatch) {
+    return getUserById(userMatch.path.id);
+  }
+
+  const productMatch = productRoute.match(url);
+  if (productMatch) {
+    // Access query params too
+    const { category, sort } = productMatch.search;
+    return getProducts({
+      id: productMatch.path.id,
+      category,
+      sort
+    });
+  }
+
+  return new Response("Not found", { status: 404 });
+});
+```
+
+### Advanced: Regex Patterns & Validation
+
+**Perfect for:** Strict routing rules, API versioning, locale handling
+
+```ts
+import { matchRoute } from "@bastianplsfix/typed-route";
+
+// Only match numeric IDs
+const userMatch = matchRoute("/api/users/:id(\\d+)", req.url);
+if (!userMatch) {
+  return new Response("Invalid user ID", { status: 400 });
+}
+
+// Locale routing
+const blogMatch = matchRoute("/blog/:lang(en|no|de)/:slug", req.url);
+if (blogMatch) {
+  return renderBlogPost(blogMatch.path.lang, blogMatch.path.slug);
+}
+
+// File type validation
+const fileMatch = matchRoute("/files/:filename.:ext(pdf|doc|txt)", req.url);
+```
+
+### Testing & Debugging
+
+**Perfect for:** Test assertions, debugging, admin panels
+
+```ts
+import { getBaseURL, getConfig } from "@bastianplsfix/typed-route";
+
+// Test setup
+beforeEach(() => {
+  configureRoute({ base: "http://test-api.local" });
+  expect(getBaseURL()).toBe("http://test-api.local");
+});
+
+// Conditional debugging
+if (getBaseURL().includes("localhost")) {
+  console.log("Dev mode - enabling mock data");
+  enableMockMode();
+}
+
+// Admin panel
+function ApiStatus() {
+  const base = getBaseURL();
+  const config = getConfig();
+
+  return (
+    <div>
+      <p>API Endpoint: {base}</p>
+      <p>Verbose: {config.verbose ? "ON" : "OFF"}</p>
+    </div>
+  );
+}
+```
 
 ## API
 
@@ -127,6 +254,26 @@ result?.path.id;  // ✅ typed as string
 result?.path.foo; // ❌ type error
 ```
 
+**Advanced URLPattern syntax:** `matchRoute()` supports the full URLPattern API, including regex constraints and custom patterns:
+
+```ts
+// Regex constraint - only digits
+matchRoute("/api/:id(\\d+)", "http://localhost:3000/api/123");
+// → { path: { id: "123" }, search: {} }
+
+matchRoute("/api/:id(\\d+)", "http://localhost:3000/api/abc");
+// → null (doesn't match)
+
+// Enum pattern
+matchRoute("/blog/:lang(en|no|de)/:slug", url);
+
+// Named groups
+matchRoute("/files/:filename.:ext", "http://localhost:3000/files/doc.pdf");
+// → { path: { filename: "doc", ext: "pdf" }, search: {} }
+```
+
+**Note:** `route()` only supports basic syntax (`:param`, `:param?`, `:param*`, `:param+`) for type inference. For advanced patterns in `route()`, use type assertion: `route("/api/:id(\\d+)" as any, { id: "123" } as any)`
+
 ### `routePattern(pattern)`
 
 Bind a pattern for reuse. Returns a callable with `.pattern` and `.match()`.
@@ -157,9 +304,65 @@ Optional one-time setup. Call at app startup.
 configureRoute({
   base: "https://api.example.com",     // explicit base (skips env detection)
   envKey: "BACKEND_URL",               // custom env variable name
-  fallback: "http://localhost:8080",    // dev fallback
-  trailingSlash: "strip",              // "strip" | "add" | "preserve"
+  fallback: "http://localhost:8080",   // dev fallback
+  trailingSlash: "strip",              // "strip" | "preserve"
+  verbose: true,                       // enable debug logging
 });
+```
+
+**Verbose logging:**
+
+By default, verbose logging is **automatically enabled in development** (when `import.meta.env.DEV` or `NODE_ENV=development`) and **disabled in production**.
+
+```ts
+// Auto-enabled in dev, off in prod (default behavior)
+configureRoute({}); // or just don't call configureRoute at all
+
+// Explicitly enable (even in production)
+configureRoute({ verbose: true });
+
+// Explicitly disable (even in dev)
+configureRoute({ verbose: false });
+
+// Granular control
+configureRoute({
+  verbose: {
+    base: true,   // Log base URL resolution (once)
+    build: true,  // Log each route() call
+    match: false, // Don't log matchRoute() (can be very noisy)
+  }
+});
+```
+
+Example output (automatically shown in dev):
+```
+[typed-route] Base URL: http://localhost:3000 (source: fallback)
+[typed-route] /api/users/:id → http://localhost:3000/api/users/42
+[typed-route] /api/posts/:slug → http://localhost:3000/api/posts/hello-world
+```
+
+### `getBaseURL()`
+
+Get the current base URL being used by the library.
+
+```ts
+const base = getBaseURL();
+console.log("API Base:", base); // "http://localhost:3000"
+
+// Useful for conditional logic
+if (getBaseURL().includes("localhost")) {
+  console.log("Running in dev mode");
+}
+```
+
+### `getConfig()`
+
+Get the current configuration (read-only copy).
+
+```ts
+const config = getConfig();
+console.log("Verbose:", config.verbose);
+console.log("Trailing slash:", config.trailingSlash);
 ```
 
 ## Type safety
@@ -188,6 +391,30 @@ Modifiers follow the [URLPattern](https://developer.mozilla.org/en-US/docs/Web/A
 
 When all params are optional (`?` or `*`), the options argument can be omitted entirely.
 
+**Why does my param need `?` to be optional?**
+
+The pattern declares your URL's contract. If you have a value that might be `undefined`, you have three options:
+
+```ts
+const userId: string | undefined = session?.userId;
+
+// ❌ Type error - pattern says :id is required, but userId might be undefined
+route("/api/users/:id", { id: userId });
+
+// ✅ Option 1: Make the pattern match reality
+route("/api/users/:id?", { id: userId });
+
+// ✅ Option 2: Guard it explicitly
+if (userId) {
+  route("/api/users/:id", { id: userId });
+}
+
+// ✅ Option 3: Provide a fallback
+route("/api/users/:id", { id: userId || "me" });
+```
+
+This is intentional — the pattern syntax should match your data's optionality. It prevents bugs where you forget to handle missing params.
+
 At runtime, if a `:param` survives replacement (e.g. the pattern was typed as `string`), `route()` throws:
 
 ```
@@ -205,10 +432,9 @@ Controlled via `configureRoute({ trailingSlash })`:
 | Mode         | `/api/bookmarks/` | `/api/bookmarks` |
 | ------------ | ------------------ | ----------------- |
 | `"strip"`    | `/api/bookmarks`   | `/api/bookmarks`  |
-| `"add"`      | `/api/bookmarks/`  | `/api/bookmarks/` |
 | `"preserve"` | `/api/bookmarks/`  | `/api/bookmarks`  |
 
-Default is `"strip"`.
+Default is `"preserve"` (URLs are not modified).
 
 ## Development
 

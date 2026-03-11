@@ -27,7 +27,10 @@ export {
   route,
   matchRoute,
   routePattern,
+  createRoute,
   configureRoute,
+  getBaseURL,
+  getConfig,
 } from "./src/route-builder.ts";
 
 export type {

@@ -121,12 +121,27 @@ export interface RouteConfig {
 
   /**
    * Trailing slash behavior for built URLs.
-   * - "strip": remove trailing slashes (default)
-   * - "add": ensure a trailing slash
-   * - "preserve": leave as-is
-   * @default "strip"
+   * - "strip": remove trailing slashes
+   * - "preserve": leave as-is (default)
+   * @default "preserve"
    */
-  trailingSlash?: "strip" | "add" | "preserve";
+  trailingSlash?: "strip" | "preserve";
+
+  /**
+   * Enable verbose logging for debugging.
+   * - `undefined`: auto-enabled in dev (import.meta.env.DEV or NODE_ENV=development), off in production
+   * - `true`: explicitly enable (works in all environments)
+   * - `false`: explicitly disable (even in dev)
+   * - `{ base, build, match }`: granular control over what gets logged
+   * @default undefined (auto-detect based on environment)
+   */
+  verbose?:
+    | boolean
+    | {
+        base?: boolean;
+        build?: boolean;
+        match?: boolean;
+      };
 }
 
 // ---------------------------------------------------------------------------
@@ -135,6 +150,7 @@ export interface RouteConfig {
 
 let _config: RouteConfig = {};
 let _resolvedBase: string | undefined;
+let _baseLogged = false;
 
 /**
  * Optionally configure the base URL resolution once at app startup.
@@ -148,11 +164,96 @@ let _resolvedBase: string | undefined;
 export function configureRoute(config: RouteConfig): void {
   _config = config;
   _resolvedBase = undefined; // reset cache
+  _baseLogged = false; // reset logging state
+}
+
+/**
+ * Get the current base URL being used by the library.
+ * Useful for debugging, displaying in UI, or conditional logic.
+ *
+ * @example
+ * ```ts
+ * const base = getBaseURL();
+ * console.log("API Base:", base); // "http://localhost:3000"
+ * ```
+ */
+export function getBaseURL(): string {
+  return getBase();
+}
+
+/**
+ * Get the current configuration (read-only).
+ * Useful for testing, debugging, or introspection.
+ *
+ * @example
+ * ```ts
+ * const config = getConfig();
+ * console.log("Verbose mode:", config.verbose);
+ * ```
+ */
+export function getConfig(): Readonly<RouteConfig> {
+  return { ..._config };
 }
 
 // ---------------------------------------------------------------------------
 // Build
 // ---------------------------------------------------------------------------
+
+/**
+ * Validate pattern syntax and throw if invalid.
+ * @internal
+ */
+function validatePattern(pattern: string): void {
+  // Must start with "/"
+  if (!pattern || !pattern.startsWith("/")) {
+    throw new Error(`Pattern must start with "/": "${pattern}"`);
+  }
+
+  // Adjacent params - params cannot be next to each other without separator
+  if (/:([a-zA-Z_]\w*)[?*+]?:/.test(pattern)) {
+    throw new Error(
+      `Invalid pattern syntax: "${pattern}". Params cannot be adjacent (e.g., ":id:name"). ` +
+      `Use a separator like "/:id/:name".`
+    );
+  }
+
+  // Empty or invalid param names - must start with letter or underscore
+  if (/:[^a-zA-Z_]/.test(pattern)) {
+    throw new Error(
+      `Invalid pattern: "${pattern}". Param names must start with a letter or underscore.`
+    );
+  }
+
+  // Multiple modifiers on same param
+  if (/:([a-zA-Z_]\w*)[?*+]{2,}/.test(pattern)) {
+    throw new Error(
+      `Invalid pattern: "${pattern}". Params can only have one modifier (?, *, or +).`
+    );
+  }
+
+  // Space after colon (common typo)
+  if (/:\s/.test(pattern)) {
+    throw new Error(
+      `Invalid pattern: "${pattern}". Space after ":" is not allowed. ` +
+      `Did you mean "/:param" instead of ": param"?`
+    );
+  }
+}
+
+/**
+ * Reject regex patterns in route-building contexts (route/routePattern).
+ * matchRoute supports full URLPattern regex — this check only applies to builders.
+ * @internal
+ */
+function rejectRegexPattern(pattern: string): void {
+  if (/:([a-zA-Z_]\w*)\([^)]+\)/.test(pattern)) {
+    throw new Error(
+      `Pattern "${pattern}" contains regex syntax (e.g., ":id(\\\\d+)"). ` +
+      `Regex patterns are only supported in matchRoute(). ` +
+      `For route(), use basic syntax or pass pattern "as any" to bypass this check.`
+    );
+  }
+}
 
 /**
  * Build a full URL from a path pattern and params.
@@ -171,6 +272,10 @@ export function configureRoute(config: RouteConfig): void {
  * // No params
  * route("/api/bookmarks");
  * ```
+ *
+ * @throws {Error} If pattern doesn't start with "/"
+ * @throws {Error} If pattern has invalid syntax (adjacent params, empty names, etc.)
+ * @throws {Error} If required params are not provided
  */
 export function route<T extends string>(
   pattern: T,
@@ -180,9 +285,8 @@ export function route<T extends string>(
       ? [options?: RouteOptions<ExtractParams<T>, T> | RouteExtra]
       : [options: RouteOptions<ExtractParams<T>, T>]
 ): string {
-  if (pattern && !pattern.startsWith("/")) {
-    throw new Error(`Pattern must start with "/": "${pattern}"`);
-  }
+  validatePattern(pattern as string);
+  rejectRegexPattern(pattern as string);
 
   const normalized = normalizeOptions(options, pattern as string);
   const base = normalized.base ? strip(normalized.base) : getBase();
@@ -213,6 +317,11 @@ export function route<T extends string>(
 
   const full = normalizeTrailingSlash(url.toString());
 
+  // Verbose logging
+  if (shouldLog("build") && typeof console !== "undefined") {
+    console.log(`[typed-route] ${pattern} → ${full}`);
+  }
+
   if (normalized.relative) {
     const parsed = new URL(full);
     return parsed.pathname + parsed.search + parsed.hash;
@@ -238,20 +347,27 @@ export function route<T extends string>(
  * matchRoute("/api/bookmarks", "http://localhost:3000/api/bookmarks?tag=a&tag=b");
  * // → { path: {}, search: { tag: ["a", "b"] } }
  * ```
+ *
+ * @throws {Error} If pattern doesn't start with "/"
+ * @throws {Error} If pattern has invalid syntax (adjacent params, empty names, etc.)
  */
 export function matchRoute<T extends string>(
   pattern: T,
   url: string,
 ): MatchResult<ExtractParams<T>> | null {
-  if (pattern && !pattern.startsWith("/")) {
-    throw new Error(`Pattern must start with "/": "${pattern}"`);
-  }
+  validatePattern(pattern as string);
 
   const base = getBase();
   const urlPattern = new URLPattern({ pathname: pattern, baseURL: base });
   const result = urlPattern.exec(url);
 
-  if (!result) return null;
+  if (!result) {
+    // Verbose logging for failed matches
+    if (shouldLog("match") && typeof console !== "undefined") {
+      console.log(`[typed-route] ✗ ${pattern} did not match ${url}`);
+    }
+    return null;
+  }
 
   // Decode path params for consistency with search params (which URLSearchParams
   // auto-decodes). Without this, a round-trip route()→matchRoute() returns
@@ -275,7 +391,15 @@ export function matchRoute<T extends string>(
     search[key] = values.length === 1 ? values[0] : values;
   }
 
-  return { path, search };
+  const matchResult = { path, search };
+
+  // Verbose logging for successful matches
+  if (shouldLog("match") && typeof console !== "undefined") {
+    console.log(`[typed-route] ✓ ${pattern} matched ${url}`);
+    console.log(`  → ${JSON.stringify(matchResult)}`);
+  }
+
+  return matchResult;
 }
 
 // ---------------------------------------------------------------------------
@@ -315,12 +439,16 @@ export interface BoundRoute<T extends string> {
  * bookmarks.match("http://localhost:3000/api/bookmarks/42");
  * // → { path: { id: "42" }, search: {} }
  * ```
+ *
+ * @throws {Error} If pattern doesn't start with "/"
  */
 export function routePattern<T extends string>(pattern: T): BoundRoute<T> {
-  if (pattern && !pattern.startsWith("/")) {
-    throw new Error(`Pattern must start with "/": "${pattern}"`);
-  }
+  // Validate pattern upfront when binding, not later when calling
+  validatePattern(pattern as string);
+  rejectRegexPattern(pattern as string);
 
+  // Use `any` internally to delegate type checking to the bound route's call signature.
+  // The returned BoundRoute<T> preserves full type safety for callers.
   // deno-lint-ignore no-explicit-any
   const fn = ((...args: [any?]) => {
     // deno-lint-ignore no-explicit-any
@@ -334,9 +462,35 @@ export function routePattern<T extends string>(pattern: T): BoundRoute<T> {
   return fn;
 }
 
+/**
+ * Alias for {@linkcode routePattern}. More intuitive name following
+ * common patterns like `createContext`, `createSlice`, etc.
+ */
+export const createRoute = routePattern;
+
 // ---------------------------------------------------------------------------
 // Internals
 // ---------------------------------------------------------------------------
+
+/**
+ * Helper to check if verbose logging is enabled for a specific category.
+ * @internal
+ */
+function shouldLog(category: "base" | "build" | "match"): boolean {
+  // Auto-enable verbose in dev unless explicitly disabled
+  const isDev =
+    !!importMetaEnv("DEV") ||
+    processEnv("NODE_ENV") === "development";
+
+  const verboseConfig = _config.verbose ?? (isDev ? true : false);
+
+  if (!verboseConfig) return false;
+  if (verboseConfig === true) {
+    // true = log base + build, but not match (too noisy by default)
+    return category === "base" || category === "build";
+  }
+  return verboseConfig[category] ?? false;
+}
 
 function getBase(): string {
   if (_resolvedBase === undefined) _resolvedBase = resolveBase(_config);
@@ -344,12 +498,23 @@ function getBase(): string {
 }
 
 function resolveBase(config: RouteConfig): string {
-  const raw =
-    config.base ||
-    envLookup(config.envKey ?? "API_BASE") ||
-    browserOrigin() ||
-    config.fallback ||
-    "http://localhost:3000";
+  let source: string;
+  let raw: string;
+  let env: string | undefined;
+
+  if (config.base) {
+    raw = config.base;
+    source = "config.base";
+  } else if ((env = envLookup(config.envKey ?? "API_BASE"))) {
+    raw = env;
+    source = `env.${config.envKey ?? "API_BASE"}`;
+  } else if (config.fallback) {
+    raw = config.fallback;
+    source = "config.fallback";
+  } else {
+    raw = "http://localhost:3000";
+    source = "fallback";
+  }
 
   const base = strip(raw);
 
@@ -359,6 +524,34 @@ function resolveBase(config: RouteConfig): string {
   } catch {
     throw new Error(
       `Invalid base URL: "${raw}" (resolved to "${base}"). Provide a full URL like "http://localhost:3000".`
+    );
+  }
+
+  // Verbose logging - only log once when base is first resolved
+  if (shouldLog("base") && !_baseLogged && typeof console !== "undefined") {
+    console.log(`[typed-route] Base URL: ${base} (source: ${source})`);
+    _baseLogged = true;
+  }
+
+  // Warn in dev if using fallback localhost
+  const isFallback = source === "fallback";
+  if (isFallback && base === "http://localhost:3000" && shouldLog("base") && typeof console !== "undefined") {
+    console.warn(
+      "[typed-route] No API_BASE configured, using fallback: http://localhost:3000. " +
+      "Set API_BASE env var or call configureRoute({ base: '...' })"
+    );
+  }
+
+  // In production, localhost is likely wrong — warn to prevent silent bugs
+  const isProduction =
+    processEnv("NODE_ENV") === "production" ||
+    !!importMetaEnv("PROD") ||
+    importMetaEnv("MODE") === "production";
+
+  if (isProduction && (base.includes("localhost") || base.includes("127.0.0.1"))) {
+    console.warn(
+      "[typed-route] Warning: using localhost/127.0.0.1 in production. " +
+      "Set API_BASE environment variable or call configureRoute({ base: '...' })"
     );
   }
 
@@ -373,13 +566,6 @@ function envLookup(key: string): string | undefined {
     bunEnv(key) ??
     processEnv(key)
   );
-}
-
-function browserOrigin(): string | undefined {
-  if (typeof globalThis.window !== "undefined" && globalThis.window.location?.origin) {
-    return globalThis.window.location.origin;
-  }
-  return undefined;
 }
 
 interface NormalizedOptions {
@@ -519,7 +705,8 @@ function replaceParams(
   }
 
   // Clean up double slashes left by removed optional segments
-  pathname = pathname.replace(/\/\//g, "/");
+  // Use negative lookbehind to avoid breaking protocol schemes (e.g., http://)
+  pathname = pathname.replace(/([^:])\/\/+/g, "$1/");
 
   return pathname;
 }
@@ -529,7 +716,10 @@ function strip(s: string): string {
 }
 
 function normalizeTrailingSlash(url: string): string {
-  const mode = _config.trailingSlash ?? "strip";
+  // Guard against edge cases: empty strings or URLs without slashes
+  if (!url || !url.includes("/")) return url;
+
+  const mode = _config.trailingSlash ?? "preserve";
   if (mode === "preserve") return url;
 
   // Split into pathname vs. the rest (query + hash), preserving both.
@@ -552,12 +742,9 @@ function normalizeTrailingSlash(url: string): string {
   const pathname = url.slice(0, splitIdx);
   const suffix = url.slice(splitIdx); // includes `?query#hash` or `#hash` etc.
 
-  const normalized =
-    mode === "strip"
-      ? pathname.replace(/\/+$/, "")
-      : pathname.endsWith("/")
-        ? pathname
-        : pathname + "/";
+  // Strip mode: remove trailing slashes
+  // Preserve mode: already returned early
+  const normalized = pathname.replace(/\/+$/, "");
 
   return normalized + suffix;
 }
