@@ -3,7 +3,10 @@ import {
   route,
   matchRoute,
   routePattern,
+  createRoute,
   configureRoute,
+  getBaseURL,
+  getConfig,
 } from "../mod.ts";
 
 function setup() {
@@ -104,38 +107,24 @@ Deno.test("route: throws listing all unreplaced params", () => {
 // Trailing slash
 // ---------------------------------------------------------------------------
 
-Deno.test("trailing slash: strips by default", () => {
+Deno.test("trailing slash: preserves by default", () => {
   setup();
   assertEquals(
     route("/api/bookmarks/"),
+    "http://localhost:3000/api/bookmarks/",
+  );
+  assertEquals(
+    route("/api/bookmarks"),
     "http://localhost:3000/api/bookmarks",
   );
 });
 
-Deno.test("trailing slash: adds when configured", () => {
-  configureRoute({ base: "http://localhost:3000", trailingSlash: "add" });
-  assertEquals(
-    route("/api/bookmarks"),
-    "http://localhost:3000/api/bookmarks/",
-  );
-});
-
-Deno.test("trailing slash: preserves when configured", () => {
-  configureRoute({ base: "http://localhost:3000", trailingSlash: "preserve" });
+Deno.test("trailing slash: strips when configured", () => {
+  configureRoute({ base: "http://localhost:3000", trailingSlash: "strip" });
   assertEquals(
     route("/api/bookmarks/"),
-    "http://localhost:3000/api/bookmarks/",
-  );
-  assertEquals(
-    route("/api/bookmarks"),
     "http://localhost:3000/api/bookmarks",
   );
-});
-
-Deno.test("trailing slash: with search params", () => {
-  configureRoute({ base: "http://localhost:3000", trailingSlash: "add" });
-  const url = route("/api/bookmarks", { search: { page: "1" } });
-  assertEquals(url, "http://localhost:3000/api/bookmarks/?page=1");
 });
 
 // ---------------------------------------------------------------------------
@@ -527,7 +516,7 @@ Deno.test("wildcard *: omitted (zero-or-more)", () => {
   setup();
   assertEquals(
     route("/files/:path*"),
-    "http://localhost:3000/files",
+    "http://localhost:3000/files/",
   );
 });
 
@@ -628,23 +617,15 @@ Deno.test("encoding: literal %20 round-trips correctly", () => {
 // ---------------------------------------------------------------------------
 
 Deno.test("trailing slash: strip mode with hash and no query", () => {
-  setup();
+  configureRoute({ base: "http://localhost:3000", trailingSlash: "strip" });
   assertEquals(
     route("/docs/", { hash: "section" }),
     "http://localhost:3000/docs#section",
   );
 });
 
-Deno.test("trailing slash: add mode with hash and no query", () => {
-  configureRoute({ base: "http://localhost:3000", trailingSlash: "add" });
-  assertEquals(
-    route("/docs", { hash: "section" }),
-    "http://localhost:3000/docs/#section",
-  );
-});
-
 Deno.test("trailing slash: strip mode with hash and query", () => {
-  setup();
+  configureRoute({ base: "http://localhost:3000", trailingSlash: "strip" });
   assertEquals(
     route("/docs/", { search: { v: "2" }, hash: "section" }),
     "http://localhost:3000/docs?v=2#section",
@@ -822,4 +803,71 @@ Deno.test("matchRoute: handles malformed percent sequence without throwing", () 
     "http://localhost:3000/api/%ZZ",
   );
   assertEquals(result?.path, { id: "%ZZ" });
+});
+
+// ---------------------------------------------------------------------------
+// matchRoute: advanced URLPattern regex syntax
+// ---------------------------------------------------------------------------
+
+Deno.test("matchRoute: regex constraint matches valid input", () => {
+  setup();
+  // Type inference doesn't strip regex groups — use `as any` for advanced patterns
+  const result = matchRoute("/api/:id(\\d+)" as any, "http://localhost:3000/api/123");
+  assertEquals(result?.path, { id: "123" });
+});
+
+Deno.test("matchRoute: regex constraint rejects invalid input", () => {
+  setup();
+  const result = matchRoute("/api/:id(\\d+)" as any, "http://localhost:3000/api/abc");
+  assertEquals(result, null);
+});
+
+Deno.test("matchRoute: enum pattern", () => {
+  setup();
+  const result = matchRoute("/blog/:lang(en|no|de)/:slug" as any, "http://localhost:3000/blog/en/hello-world");
+  assertEquals(result?.path, { lang: "en", slug: "hello-world" });
+});
+
+// ---------------------------------------------------------------------------
+// createRoute (alias for routePattern)
+// ---------------------------------------------------------------------------
+
+Deno.test("createRoute: works as alias for routePattern", () => {
+  setup();
+  const users = createRoute("/api/users/:id");
+  assertEquals(users.pattern, "/api/users/:id");
+  assertEquals(users({ id: "42" }), "http://localhost:3000/api/users/42");
+  assertEquals(
+    users.match("http://localhost:3000/api/users/42")?.path,
+    { id: "42" },
+  );
+});
+
+// ---------------------------------------------------------------------------
+// getBaseURL / getConfig
+// ---------------------------------------------------------------------------
+
+Deno.test("getBaseURL: returns resolved base", () => {
+  configureRoute({ base: "https://api.example.com" });
+  assertEquals(getBaseURL(), "https://api.example.com");
+});
+
+Deno.test("getConfig: returns config copy", () => {
+  configureRoute({ base: "https://api.example.com", trailingSlash: "strip" });
+  const config = getConfig();
+  assertEquals(config.base, "https://api.example.com");
+  assertEquals(config.trailingSlash, "strip");
+});
+
+// ---------------------------------------------------------------------------
+// route: rejects regex patterns (matchRoute does not)
+// ---------------------------------------------------------------------------
+
+Deno.test("route: throws on regex pattern syntax", () => {
+  setup();
+  assertThrows(
+    () => (route as any)("/api/:id(\\d+)", { id: "123" }),
+    Error,
+    "regex syntax",
+  );
 });

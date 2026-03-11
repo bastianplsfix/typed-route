@@ -238,8 +238,14 @@ function validatePattern(pattern: string): void {
       `Did you mean "/:param" instead of ": param"?`
     );
   }
+}
 
-  // Regex patterns not supported in route() - use matchRoute() instead
+/**
+ * Reject regex patterns in route-building contexts (route/routePattern).
+ * matchRoute supports full URLPattern regex — this check only applies to builders.
+ * @internal
+ */
+function rejectRegexPattern(pattern: string): void {
   if (/:([a-zA-Z_]\w*)\([^)]+\)/.test(pattern)) {
     throw new Error(
       `Pattern "${pattern}" contains regex syntax (e.g., ":id(\\\\d+)"). ` +
@@ -281,6 +287,7 @@ export function route<T extends string>(
       : [options: RouteOptions<ExtractParams<T>, T>]
 ): string {
   validatePattern(pattern as string);
+  rejectRegexPattern(pattern as string);
 
   const normalized = normalizeOptions(options, pattern as string);
   const base = normalized.base ? strip(normalized.base) : getBase();
@@ -439,6 +446,7 @@ export interface BoundRoute<T extends string> {
 export function routePattern<T extends string>(pattern: T): BoundRoute<T> {
   // Validate pattern upfront when binding, not later when calling
   validatePattern(pattern as string);
+  rejectRegexPattern(pattern as string);
 
   // Use `any` internally to delegate type checking to the bound route's call signature.
   // The returned BoundRoute<T> preserves full type safety for callers.
@@ -472,7 +480,7 @@ export const createRoute = routePattern;
 function shouldLog(category: "base" | "build" | "match"): boolean {
   // Auto-enable verbose in dev unless explicitly disabled
   const isDev =
-    importMetaEnv("DEV") === true ||
+    !!importMetaEnv("DEV") ||
     processEnv("NODE_ENV") === "development";
 
   const verboseConfig = _config.verbose ?? (isDev ? true : false);
@@ -493,12 +501,13 @@ function getBase(): string {
 function resolveBase(config: RouteConfig): string {
   let source: string;
   let raw: string;
+  let env: string | undefined;
 
   if (config.base) {
     raw = config.base;
     source = "config.base";
-  } else if (envLookup(config.envKey ?? "API_BASE")) {
-    raw = envLookup(config.envKey ?? "API_BASE")!;
+  } else if ((env = envLookup(config.envKey ?? "API_BASE"))) {
+    raw = env;
     source = `env.${config.envKey ?? "API_BASE"}`;
   } else if (config.fallback) {
     raw = config.fallback;
@@ -527,7 +536,7 @@ function resolveBase(config: RouteConfig): string {
 
   // Warn in dev if using fallback localhost
   const isFallback = source === "fallback";
-  if (isFallback && base === "http://localhost:3000" && typeof console !== "undefined") {
+  if (isFallback && base === "http://localhost:3000" && shouldLog("base") && typeof console !== "undefined") {
     console.warn(
       "[typed-route] No API_BASE configured, using fallback: http://localhost:3000. " +
       "Set API_BASE env var or call configureRoute({ base: '...' })"
@@ -537,12 +546,12 @@ function resolveBase(config: RouteConfig): string {
   // In production, localhost is likely wrong — throw to prevent silent bugs
   const isProduction =
     processEnv("NODE_ENV") === "production" ||
-    importMetaEnv("PROD") === true ||
+    !!importMetaEnv("PROD") ||
     importMetaEnv("MODE") === "production";
 
   if (isProduction && (base.includes("localhost") || base.includes("127.0.0.1"))) {
-    throw new Error(
-      "[typed-route] Refusing to use localhost/127.0.0.1 in production. " +
+    console.warn(
+      "[typed-route] Warning: using localhost/127.0.0.1 in production. " +
       "Set API_BASE environment variable or call configureRoute({ base: '...' })"
     );
   }
@@ -698,7 +707,7 @@ function replaceParams(
 
   // Clean up double slashes left by removed optional segments
   // Use negative lookbehind to avoid breaking protocol schemes (e.g., http://)
-  pathname = pathname.replace(/([^:])\/\//g, "$1/");
+  pathname = pathname.replace(/([^:])\/\/+/g, "$1/");
 
   return pathname;
 }
