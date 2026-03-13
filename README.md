@@ -1,4 +1,4 @@
-# typed-route
+# typesafe-route
 
 A tiny, type-safe URL builder and matcher powered by the [URLPattern API](https://developer.mozilla.org/en-US/docs/Web/API/URLPattern). Resolves base URLs automatically from your environment so you never have to interpolate template strings into `fetch()` calls.
 
@@ -13,10 +13,10 @@ A tiny, type-safe URL builder and matcher powered by the [URLPattern API](https:
 
 ```bash
 # npm
-npm install typed-route
+npm install typesafe-route
 
 # Deno / JSR
-deno add jsr:@bastianplsfix/typed-route
+deno add jsr:@bastianplsfix/typesafe-route
 ```
 
 > **URLPattern support:** Native in Chromium, Node ≥ 23, Deno, and Bun. Firefox requires a [polyfill](https://github.com/kenchris/urlpattern-polyfill). Note: only `matchRoute` needs URLPattern — `route()` works everywhere. If unavailable, `matchRoute()` throws a clear error.
@@ -24,7 +24,7 @@ deno add jsr:@bastianplsfix/typed-route
 ## Quick start
 
 ```ts
-import { route } from "typed-route";
+import { route } from "typesafe-route";
 
 // In a TanStack Query hook
 useSuspenseQuery({
@@ -49,7 +49,7 @@ The base URL is resolved automatically:
 **Perfect for:** React, Vue, Svelte apps making fetch calls
 
 ```ts
-import { route, createRoute } from "typed-route";
+import { route, createRoute } from "typesafe-route";
 
 // TanStack Query
 const userRoute = createRoute("/api/users/:id");
@@ -83,7 +83,7 @@ const products = await fetch(
 **Perfect for:** Deno/Bun HTTP servers, middleware, webhooks
 
 ```ts
-import { matchRoute, tryMatchRoute, createRoute } from "typed-route";
+import { matchRoute, tryMatchRoute, createRoute } from "typesafe-route";
 
 // Define routes once
 const userRoute = createRoute("/api/users/:id");
@@ -119,7 +119,7 @@ Deno.serve((req) => {
 **Perfect for:** Strict routing rules, API versioning, locale handling
 
 ```ts
-import { matchRoute } from "typed-route";
+import { matchRoute } from "typesafe-route";
 
 // Only match numeric IDs
 const userMatch = matchRoute("/api/users/:id(\\d+)", req.url);
@@ -142,7 +142,7 @@ const fileMatch = matchRoute("/files/:filename.:ext(pdf|doc|txt)", req.url);
 **Perfect for:** Test assertions, debugging, admin panels
 
 ```ts
-import { getBaseURL, getBaseInfo, getConfig, isURLPatternSupported, resetRouteConfig } from "typed-route";
+import { getBaseURL, getBaseInfo, getConfig, isURLPatternSupported, resetRouteConfig } from "typesafe-route";
 
 // Test setup
 beforeEach(() => {
@@ -365,9 +365,9 @@ configureRoute({
 
 Example output (automatically shown in dev):
 ```
-[typed-route] Base URL: http://localhost:3000 (source: fallback)
-[typed-route] /api/users/:id → http://localhost:3000/api/users/42
-[typed-route] /api/posts/:slug → http://localhost:3000/api/posts/hello-world
+[typesafe-route] Base URL: http://localhost:3000 (source: fallback)
+[typesafe-route] /api/users/:id → http://localhost:3000/api/users/42
+[typesafe-route] /api/posts/:slug → http://localhost:3000/api/posts/hello-world
 ```
 
 ### `getBaseURL()`
@@ -524,7 +524,7 @@ import type {
   RouteConfig,       // config for configureRoute()
   BaseSource,        // source literals for resolved base
   BaseInfo,          // resolved base debug info
-} from "typed-route";
+} from "typesafe-route";
 ```
 
 ## License

@@ -364,7 +364,7 @@ export function route<T extends string>(
 
   // Verbose logging
   if (shouldLog("build") && typeof console !== "undefined") {
-    console.log(`[typed-route] ${pattern} → ${full}`);
+    console.log(`[typesafe-route] ${pattern} → ${full}`);
   }
 
   if (normalized.relative) {
@@ -421,7 +421,7 @@ export function matchRoute<T extends string>(
   if (!result) {
     // Verbose logging for failed matches
     if (shouldLog("match") && typeof console !== "undefined") {
-      console.log(`[typed-route] ✗ ${pattern} did not match ${url}`);
+      console.log(`[typesafe-route] ✗ ${pattern} did not match ${url}`);
     }
     return null;
   }
@@ -452,7 +452,7 @@ export function matchRoute<T extends string>(
 
   // Verbose logging for successful matches
   if (shouldLog("match") && typeof console !== "undefined") {
-    console.log(`[typed-route] ✓ ${pattern} matched ${url}`);
+    console.log(`[typesafe-route] ✓ ${pattern} matched ${url}`);
     console.log(`  → ${JSON.stringify(matchResult)}`);
   }
 
@@ -600,7 +600,7 @@ function resolveBase(config: RouteConfig): BaseInfo {
 
   // Verbose logging - only log once when base is first resolved
   if (shouldLog("base") && !_baseLogged && typeof console !== "undefined") {
-    console.log(`[typed-route] Base URL: ${base} (source: ${source})`);
+    console.log(`[typesafe-route] Base URL: ${base} (source: ${source})`);
     _baseLogged = true;
   }
 
@@ -610,7 +610,7 @@ function resolveBase(config: RouteConfig): BaseInfo {
     typeof console !== "undefined"
   ) {
     console.warn(
-      "[typed-route] Using localhost base: http://localhost:3000. " +
+      "[typesafe-route] Using localhost base: http://localhost:3000. " +
         "Set API_BASE env var or call configureRoute({ base: '...' }) if unintended.",
     );
   }
@@ -624,7 +624,7 @@ function resolveBase(config: RouteConfig): BaseInfo {
     isProduction && (base.includes("localhost") || base.includes("127.0.0.1"))
   ) {
     console.warn(
-      "[typed-route] Warning: using localhost/127.0.0.1 in production. " +
+      "[typesafe-route] Warning: using localhost/127.0.0.1 in production. " +
         "Set API_BASE environment variable or call configureRoute({ base: '...' })",
     );
   }
@@ -826,6 +826,7 @@ function processEnv(key: string): string | undefined {
     // deno-lint-ignore no-process-global
     return typeof process !== "undefined"
       // deno-lint-ignore no-process-global no-explicit-any
+      // @ts-ignore — process global may not exist in non-Node runtimes
       ? (process as any).env[key]
       : undefined;
   } catch {

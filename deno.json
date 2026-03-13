@@ -1,6 +1,6 @@
 {
-  "name": "@bastianplsfix/typed-route",
-  "version": "0.3.0",
+  "name": "@bastianplsfix/typesafe-route",
+  "version": "0.1.0",
   "license": "MIT",
   "exports": "./src/index.ts",
   "compilerOptions": {

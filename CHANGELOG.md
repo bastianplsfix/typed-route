@@ -7,28 +7,24 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ## [Unreleased]
 
-## [0.4.0] - 2026-03-13
+## [0.1.0] - 2026-03-13
+
+Initial release as `typesafe-route` (npm) / `@bastianplsfix/typesafe-route` (JSR).
 
 ### Added
-- npm publishing support via Vite+ / tsdown build pipeline.
-- `isURLPatternSupported()` runtime check for URLPattern availability.
-- `getConfig()` to read current configuration (read-only copy).
-- `createRoute` alias for `routePattern`.
+- `route(pattern, options?)` — type-safe URL builder with compile-time param extraction.
+- `matchRoute(pattern, url)` — URL matching via URLPattern with typed params.
+- `tryMatchRoute(pattern, url)` — non-throwing variant of `matchRoute()`.
+- `routePattern(pattern)` / `createRoute(pattern)` — bind a pattern for reuse.
+- `configureRoute(config)` — one-time setup for base URL, env key, trailing slash, verbose logging.
+- `resetRouteConfig()` — clear config and cached state.
+- `getBaseURL()` — get the current resolved base URL.
+- `getBaseInfo()` — get base URL + resolution source diagnostics.
+- `getConfig()` — read current configuration (read-only copy).
+- `isURLPatternSupported()` — runtime check for URLPattern availability.
+- Explicit `{ path: {...} }` options for path params (top-level shorthand rejected).
 - Per-call `base` override option in `route()`.
 - Auto-detected verbose logging in development environments.
 - Granular verbose config (`{ base, build, match }`).
-- `tryMatchRoute(pattern, url)` non-throwing matcher helper.
-- `resetRouteConfig()` helper to clear config/cache state.
-- `getBaseInfo()` and `BaseSource` diagnostics for base-resolution source visibility.
-
-### Changed
-- Migrated project from Deno-first to Vite+ (npm-first) structure.
-- Library source moved from `src/route-builder.ts` to `src/index.ts`.
-- Tests migrated from `Deno.test` to Vitest (via `vite-plus/test`).
-- Import path changed from `@bastianplsfix/typed-route` to `typed-route` for npm.
-- `route()` path params now use explicit `{ path: {...} }` options (breaking).
-- `RouteExtra` renamed to `RouteBuildExtras`.
-
-### Fixed
-- `matchRoute` now prepends base URL for relative URL inputs.
-- Base URL resolution properly checks `window.location.origin` in browsers.
+- Environment-aware base URL resolution: Vite, Deno, Bun, Node, browser.
+- Dual publishing: npm (via Vite+ / tsdown) and JSR (raw TypeScript).

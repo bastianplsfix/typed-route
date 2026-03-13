@@ -1,17 +1,17 @@
 {
-  "name": "typed-route",
+  "name": "typesafe-route",
   "type": "module",
-  "version": "0.4.0",
+  "version": "0.1.0",
   "description": "Type-safe URL builder and matcher for fetch() calls. Extracts :param names at compile time, resolves base URLs from Vite/Deno/Bun/Node/browser, and matches URLs back into typed params via URLPattern. Zero dependencies.",
   "author": "Sebastian Nomme <sebastian.nomme@icloud.com>",
   "license": "MIT",
-  "homepage": "https://github.com/bastianplsfix/typed-route#readme",
+  "homepage": "https://github.com/bastianplsfix/typesafe-route#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/bastianplsfix/typed-route.git"
+    "url": "git+https://github.com/bastianplsfix/typesafe-route.git"
   },
   "bugs": {
-    "url": "https://github.com/bastianplsfix/typed-route/issues"
+    "url": "https://github.com/bastianplsfix/typesafe-route/issues"
   },
   "exports": {
     ".": "./dist/index.mjs",
@@ -26,7 +26,7 @@
     "dev": "vp pack --watch",
     "test": "vp test",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "pnpm run build"
+    "prepublishOnly": "npm run build"
   },
   "devDependencies": {
     "@types/node": "^25.3.5",
