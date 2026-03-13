@@ -10,7 +10,7 @@
  * // In your queryFn — just works
  * useSuspenseQuery({
  *   queryKey: ["bookmarks", id],
- *   queryFn: () => fetch(route("/api/bookmarks/:id", { id })).then(r => r.json()),
+ *   queryFn: () => fetch(route("/api/bookmarks/:id", { path: { id } })).then(r => r.json()),
  * });
  *
  * // With search params
@@ -31,19 +31,17 @@
 export type ParamValue = string | number;
 
 /** Strip modifier suffixes (`?`, `*`, `+`) from a param name. */
-export type StripModifier<T extends string> =
-  T extends `${infer Name}${"?" | "*" | "+"}` ? Name : T;
+export type StripModifier<T extends string> = T extends
+  `${infer Name}${"?" | "*" | "+"}` ? Name : T;
 
 /**
  * Extract raw `:param` tokens (including modifiers) from a pattern string literal.
  * @internal
  */
-type RawParams<T extends string> =
-  T extends `${string}:${infer Param}/${infer Rest}`
-    ? Param | RawParams<Rest>
-    : T extends `${string}:${infer Param}`
-      ? Param
-      : never;
+type RawParams<T extends string> = T extends
+  `${string}:${infer Param}/${infer Rest}` ? Param | RawParams<Rest>
+  : T extends `${string}:${infer Param}` ? Param
+  : never;
 
 /**
  * Extract `:param` names from a pattern string literal, stripping modifiers.
@@ -56,15 +54,17 @@ type RawParams<T extends string> =
 export type ExtractParams<T extends string> = StripModifier<RawParams<T>>;
 
 /** Extract only required param names (no `?` or `*` modifier — these are optional). */
-type RequiredParams<T extends string> =
-  StripModifier<Exclude<RawParams<T>, `${string}?` | `${string}*`>>;
+type RequiredParams<T extends string> = StripModifier<
+  Exclude<RawParams<T>, `${string}?` | `${string}*`>
+>;
 
 /** Extract only optional param names (with `?` or `*` modifier). */
-type OptionalParams<T extends string> =
-  StripModifier<Extract<RawParams<T>, `${string}?` | `${string}*`>>;
+type OptionalParams<T extends string> = StripModifier<
+  Extract<RawParams<T>, `${string}?` | `${string}*`>
+>;
 
 /** Extra options available in the explicit `{ path, ... }` form. */
-export interface RouteExtra {
+export interface RouteBuildExtras {
   search?: Record<string, string | string[]>;
   /** URL fragment (without the `#`). */
   hash?: string;
@@ -75,22 +75,23 @@ export interface RouteExtra {
 }
 
 /**
- * When the pattern has no params, options are optional (search-only or omitted).
- * When it has params, you must provide them — either as a flat object or via `{ path }`.
- * Optional-only patterns allow omitting the options argument entirely.
+ * Explicit options object for route building.
+ *
+ * - Patterns with required params require `path`.
+ * - Patterns with only optional params allow omitting `path` (or options entirely).
+ * - Patterns with no params accept `RouteBuildExtras` (or no options).
  */
 export type RouteOptions<K extends string = string, T extends string = string> =
-  [K] extends [never]
-    ? RouteExtra | undefined
+  [K] extends [never] ? RouteBuildExtras | undefined
     : [RequiredParams<T>] extends [never]
-      ? | Partial<Record<K, ParamValue>>
-        | ({ path?: Partial<Record<K, ParamValue>> } & RouteExtra)
+      ?
+        | ({ path?: Partial<Record<K, ParamValue>> } & RouteBuildExtras)
         | undefined
-      : [OptionalParams<T>] extends [never]
-        ? | Record<K, ParamValue>
-          | ({ path: Record<K, ParamValue> } & RouteExtra)
-        : | (Record<RequiredParams<T>, ParamValue> & Partial<Record<OptionalParams<T>, ParamValue>>)
-          | ({ path: Record<RequiredParams<T>, ParamValue> & Partial<Record<OptionalParams<T>, ParamValue>> } & RouteExtra);
+    : ({
+      path:
+        & Record<RequiredParams<T>, ParamValue>
+        & Partial<Record<OptionalParams<T>, ParamValue>>;
+    } & RouteBuildExtras);
 
 /** Result of matching a URL against a pattern via {@linkcode matchRoute}. */
 export interface MatchResult<K extends string = string> {
@@ -138,10 +139,24 @@ export interface RouteConfig {
   verbose?:
     | boolean
     | {
-        base?: boolean;
-        build?: boolean;
-        match?: boolean;
-      };
+      base?: boolean;
+      build?: boolean;
+      match?: boolean;
+    };
+}
+
+/** Base URL source literals exposed for diagnostics and testing. */
+export type BaseSource =
+  | "config.base"
+  | `env.${string}`
+  | "window.location.origin"
+  | "config.fallback"
+  | "fallback";
+
+/** Debug info about the resolved base URL source. */
+export interface BaseInfo {
+  base: string;
+  source: BaseSource;
 }
 
 // ---------------------------------------------------------------------------
@@ -150,6 +165,7 @@ export interface RouteConfig {
 
 let _config: RouteConfig = {};
 let _resolvedBase: string | undefined;
+let _resolvedSource: BaseSource | undefined;
 let _baseLogged = false;
 
 /**
@@ -164,7 +180,19 @@ let _baseLogged = false;
 export function configureRoute(config: RouteConfig): void {
   _config = config;
   _resolvedBase = undefined; // reset cache
+  _resolvedSource = undefined; // reset source cache
   _baseLogged = false; // reset logging state
+}
+
+/**
+ * Reset all route configuration and cached resolution state.
+ * Useful for tests or hot-reload flows.
+ */
+export function resetRouteConfig(): void {
+  _config = {};
+  _resolvedBase = undefined;
+  _resolvedSource = undefined;
+  _baseLogged = false;
 }
 
 /**
@@ -195,6 +223,22 @@ export function getConfig(): Readonly<RouteConfig> {
   return { ..._config };
 }
 
+/**
+ * Get the currently resolved base URL and where it came from.
+ */
+export function getBaseInfo(): BaseInfo {
+  const base = getBase();
+  const source = _resolvedSource ?? "fallback";
+  return { base, source };
+}
+
+/**
+ * Check whether URLPattern is available in the current runtime.
+ */
+export function isURLPatternSupported(): boolean {
+  return typeof URLPattern !== "undefined";
+}
+
 // ---------------------------------------------------------------------------
 // Build
 // ---------------------------------------------------------------------------
@@ -213,21 +257,21 @@ function validatePattern(pattern: string): void {
   if (/:([a-zA-Z_]\w*)[?*+]?:/.test(pattern)) {
     throw new Error(
       `Invalid pattern syntax: "${pattern}". Params cannot be adjacent (e.g., ":id:name"). ` +
-      `Use a separator like "/:id/:name".`
+        `Use a separator like "/:id/:name".`,
     );
   }
 
   // Empty or invalid param names - must start with letter or underscore
   if (/:[^a-zA-Z_]/.test(pattern)) {
     throw new Error(
-      `Invalid pattern: "${pattern}". Param names must start with a letter or underscore.`
+      `Invalid pattern: "${pattern}". Param names must start with a letter or underscore.`,
     );
   }
 
   // Multiple modifiers on same param
   if (/:([a-zA-Z_]\w*)[?*+]{2,}/.test(pattern)) {
     throw new Error(
-      `Invalid pattern: "${pattern}". Params can only have one modifier (?, *, or +).`
+      `Invalid pattern: "${pattern}". Params can only have one modifier (?, *, or +).`,
     );
   }
 
@@ -235,7 +279,7 @@ function validatePattern(pattern: string): void {
   if (/:\s/.test(pattern)) {
     throw new Error(
       `Invalid pattern: "${pattern}". Space after ":" is not allowed. ` +
-      `Did you mean "/:param" instead of ": param"?`
+        `Did you mean "/:param" instead of ": param"?`,
     );
   }
 }
@@ -249,8 +293,8 @@ function rejectRegexPattern(pattern: string): void {
   if (/:([a-zA-Z_]\w*)\([^)]+\)/.test(pattern)) {
     throw new Error(
       `Pattern "${pattern}" contains regex syntax (e.g., ":id(\\\\d+)"). ` +
-      `Regex patterns are only supported in matchRoute(). ` +
-      `For route(), use basic syntax or pass pattern "as any" to bypass this check.`
+        `Regex patterns are only supported in matchRoute(). ` +
+        `For route(), use basic syntax or pass pattern "as any" to bypass this check.`,
     );
   }
 }
@@ -260,10 +304,10 @@ function rejectRegexPattern(pattern: string): void {
  *
  * @example
  * ```ts
- * // Shorthand — flat object = path params
- * route("/api/bookmarks/:id", { id: "42" });
+ * // Path params
+ * route("/api/bookmarks/:id", { path: { id: "42" } });
  *
- * // Explicit path + search
+ * // Path + search
  * route("/api/bookmarks/:id", {
  *   path: { id: "42" },
  *   search: { fields: "title,url" },
@@ -280,24 +324,26 @@ function rejectRegexPattern(pattern: string): void {
 export function route<T extends string>(
   pattern: T,
   ...[options]: [ExtractParams<T>] extends [never]
-    ? [options?: RouteExtra]
+    ? [options?: RouteBuildExtras]
     : [RequiredParams<T>] extends [never]
-      ? [options?: RouteOptions<ExtractParams<T>, T> | RouteExtra]
-      : [options: RouteOptions<ExtractParams<T>, T>]
+      ? [options?: RouteOptions<ExtractParams<T>, T>]
+    : [options: RouteOptions<ExtractParams<T>, T>]
 ): string {
   validatePattern(pattern as string);
   rejectRegexPattern(pattern as string);
 
-  const normalized = normalizeOptions(options, pattern as string);
+  const normalized = normalizeOptions(options);
   const base = normalized.base ? strip(normalized.base) : getBase();
 
-  let pathname = replaceParams(pattern as string, normalized.path);
+  const pathname = replaceParams(pattern as string, normalized.path);
 
   // Runtime safety net — catches untyped patterns (e.g. `string` variables)
   const unreplaced = pathname.match(/:([a-zA-Z_]\w*)[?*+]?/g);
   if (unreplaced) {
     throw new Error(
-      `Unreplaced params in "${pattern}": ${unreplaced.join(", ")}. Received: ${JSON.stringify(normalized.path)}`
+      `Unreplaced params in "${pattern}": ${unreplaced.join(", ")}. Received: ${
+        JSON.stringify(normalized.path)
+      }`,
     );
   }
 
@@ -358,8 +404,20 @@ export function matchRoute<T extends string>(
   validatePattern(pattern as string);
 
   const base = getBase();
+
+  if (!isURLPatternSupported()) {
+    throw new Error(
+      "URLPattern is not available in this runtime. " +
+        "Use a URLPattern polyfill or avoid matchRoute() in this environment.",
+    );
+  }
+
+  // Relative URLs (e.g. "/api/bookmarks/42") need the base prepended so
+  // URLPattern.exec() can match them against the full origin.
+  const resolvedUrl = url.startsWith("/") ? base + url : url;
+
   const urlPattern = new URLPattern({ pathname: pattern, baseURL: base });
-  const result = urlPattern.exec(url);
+  const result = urlPattern.exec(resolvedUrl);
 
   if (!result) {
     // Verbose logging for failed matches
@@ -385,7 +443,7 @@ export function matchRoute<T extends string>(
   ) as Record<ExtractParams<T>, string>;
 
   const search: Record<string, string | string[]> = {};
-  const parsed = new URL(url);
+  const parsed = new URL(url, base);
   for (const key of new Set(parsed.searchParams.keys())) {
     const values = parsed.searchParams.getAll(key);
     search[key] = values.length === 1 ? values[0] : values;
@@ -402,6 +460,18 @@ export function matchRoute<T extends string>(
   return matchResult;
 }
 
+/**
+ * Non-throwing variant of {@linkcode matchRoute}.
+ * Returns `null` when URLPattern is unavailable or when the URL doesn't match.
+ */
+export function tryMatchRoute<T extends string>(
+  pattern: T,
+  url: string,
+): MatchResult<ExtractParams<T>> | null {
+  if (!isURLPatternSupported()) return null;
+  return matchRoute(pattern, url);
+}
+
 // ---------------------------------------------------------------------------
 // Pattern helper
 // ---------------------------------------------------------------------------
@@ -412,11 +482,10 @@ export interface BoundRoute<T extends string> {
 
   /** Build a URL from this pattern. Same args as `route()` minus the pattern. */
   (
-    ...args: [ExtractParams<T>] extends [never]
-      ? [options?: RouteExtra]
+    ...args: [ExtractParams<T>] extends [never] ? [options?: RouteBuildExtras]
       : [RequiredParams<T>] extends [never]
-        ? [options?: RouteOptions<ExtractParams<T>, T> | RouteExtra]
-        : [options: RouteOptions<ExtractParams<T>, T>]
+        ? [options?: RouteOptions<ExtractParams<T>, T>]
+      : [options: RouteOptions<ExtractParams<T>, T>]
   ): string;
 
   /** Match a URL against this pattern. */
@@ -432,7 +501,7 @@ export interface BoundRoute<T extends string> {
  *
  * useSuspenseQuery({
  *   queryKey: [bookmarks.pattern, id],
- *   queryFn: () => fetch(bookmarks({ id })).then(r => r.json()),
+ *   queryFn: () => fetch(bookmarks({ path: { id } })).then(r => r.json()),
  * });
  *
  * // Also works for matching
@@ -447,11 +516,9 @@ export function routePattern<T extends string>(pattern: T): BoundRoute<T> {
   validatePattern(pattern as string);
   rejectRegexPattern(pattern as string);
 
-  // Use `any` internally to delegate type checking to the bound route's call signature.
-  // The returned BoundRoute<T> preserves full type safety for callers.
-  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const fn = ((...args: [any?]) => {
-    // deno-lint-ignore no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return (route as any)(pattern, ...args);
   }) as unknown as BoundRoute<T>;
 
@@ -478,8 +545,7 @@ export const createRoute = routePattern;
  */
 function shouldLog(category: "base" | "build" | "match"): boolean {
   // Auto-enable verbose in dev unless explicitly disabled
-  const isDev =
-    !!importMetaEnv("DEV") ||
+  const isDev = !!importMetaEnv("DEV") ||
     processEnv("NODE_ENV") === "development";
 
   const verboseConfig = _config.verbose ?? (isDev ? true : false);
@@ -493,12 +559,16 @@ function shouldLog(category: "base" | "build" | "match"): boolean {
 }
 
 function getBase(): string {
-  if (_resolvedBase === undefined) _resolvedBase = resolveBase(_config);
+  if (_resolvedBase === undefined) {
+    const resolved = resolveBase(_config);
+    _resolvedBase = resolved.base;
+    _resolvedSource = resolved.source;
+  }
   return _resolvedBase;
 }
 
-function resolveBase(config: RouteConfig): string {
-  let source: string;
+function resolveBase(config: RouteConfig): BaseInfo {
+  let source: BaseSource;
   let raw: string;
   let env: string | undefined;
 
@@ -508,6 +578,9 @@ function resolveBase(config: RouteConfig): string {
   } else if ((env = envLookup(config.envKey ?? "API_BASE"))) {
     raw = env;
     source = `env.${config.envKey ?? "API_BASE"}`;
+  } else if ((env = windowOrigin())) {
+    raw = env;
+    source = "window.location.origin";
   } else if (config.fallback) {
     raw = config.fallback;
     source = "config.fallback";
@@ -523,7 +596,7 @@ function resolveBase(config: RouteConfig): string {
     new URL("/", base);
   } catch {
     throw new Error(
-      `Invalid base URL: "${raw}" (resolved to "${base}"). Provide a full URL like "http://localhost:3000".`
+      `Invalid base URL: "${raw}" (resolved to "${base}"). Provide a full URL like "http://localhost:3000".`,
     );
   }
 
@@ -533,38 +606,41 @@ function resolveBase(config: RouteConfig): string {
     _baseLogged = true;
   }
 
-  // Warn in dev if using fallback localhost
-  const isFallback = source === "fallback";
-  if (isFallback && base === "http://localhost:3000" && shouldLog("base") && typeof console !== "undefined") {
+  // Warn in dev when localhost base is active (common misconfiguration).
+  if (
+    base === "http://localhost:3000" && shouldLog("base") &&
+    typeof console !== "undefined"
+  ) {
     console.warn(
-      "[typed-route] No API_BASE configured, using fallback: http://localhost:3000. " +
-      "Set API_BASE env var or call configureRoute({ base: '...' })"
+      "[typed-route] Using localhost base: http://localhost:3000. " +
+        "Set API_BASE env var or call configureRoute({ base: '...' }) if unintended.",
     );
   }
 
   // In production, localhost is likely wrong — warn to prevent silent bugs
-  const isProduction =
-    processEnv("NODE_ENV") === "production" ||
+  const isProduction = processEnv("NODE_ENV") === "production" ||
     !!importMetaEnv("PROD") ||
     importMetaEnv("MODE") === "production";
 
-  if (isProduction && (base.includes("localhost") || base.includes("127.0.0.1"))) {
+  if (
+    isProduction && (base.includes("localhost") || base.includes("127.0.0.1"))
+  ) {
     console.warn(
       "[typed-route] Warning: using localhost/127.0.0.1 in production. " +
-      "Set API_BASE environment variable or call configureRoute({ base: '...' })"
+        "Set API_BASE environment variable or call configureRoute({ base: '...' })",
     );
   }
 
-  return base;
+  return { base, source };
 }
 
 function envLookup(key: string): string | undefined {
   return (
     importMetaEnv(key) ??
-    importMetaEnv(`VITE_${key}`) ??
-    denoEnv(key) ??
-    bunEnv(key) ??
-    processEnv(key)
+      importMetaEnv(`VITE_${key}`) ??
+      denoEnv(key) ??
+      bunEnv(key) ??
+      processEnv(key)
   );
 }
 
@@ -579,77 +655,36 @@ interface NormalizedOptions {
 const EXTRA_KEYS = new Set(["path", "search", "hash", "relative", "base"]);
 
 function normalizeOptions(
-  options?: RouteOptions<string> | RouteExtra,
-  pattern?: string,
+  options?: RouteOptions<string> | RouteBuildExtras,
 ): NormalizedOptions {
   if (!options) return { path: {}, search: {} };
 
   const obj = options as Record<string, unknown>;
   const keys = Object.keys(obj);
 
-  // If any key is NOT an extra key, this must be the flat form — all values are path params.
-  // In explicit form, non-path params go inside `path: { ... }`, so there would be
-  // no unknown top-level keys.
   const hasNonExtraKey = keys.some((k) => !EXTRA_KEYS.has(k));
-
   if (hasNonExtraKey) {
-    return { path: obj as Record<string, ParamValue>, search: {} };
-  }
-
-  // All keys are extra keys. Use unambiguous type signals first: `path` as object,
-  // `search` as object, or `relative` as boolean are strong indicators of explicit form.
-  const hasStrongExplicitKey = keys.some((k) => {
-    const v = obj[k];
-    if (k === "path") return typeof v === "object" && v !== null;
-    if (k === "search") return typeof v === "object" && v !== null;
-    if (k === "relative") return typeof v === "boolean";
-    return false;
-  });
-
-  if (hasStrongExplicitKey) {
-    const explicit = options as {
-      path?: Record<string, ParamValue>;
-      search?: Record<string, string | string[]>;
-      hash?: string;
-      relative?: boolean;
-      base?: string;
-    };
-    return {
-      path: explicit.path ?? {},
-      search: explicit.search ?? {},
-      hash: explicit.hash,
-      relative: explicit.relative,
-      base: explicit.base,
-    };
-  }
-
-  // Remaining keys are only the ambiguous string-typed extras: `hash`, `base`.
-  // Use the pattern to disambiguate: if any key matches a param name, treat as flat.
-  if (pattern) {
-    const paramNames = new Set(
-      (pattern.match(/:([a-zA-Z_]\w*)/g) ?? []).map((m) => m.slice(1)),
+    throw new Error(
+      "Invalid route options: top-level params are no longer supported. " +
+        "Use explicit form: { path: {...}, search?, hash?, relative?, base? }.",
     );
-    if (keys.some((k) => paramNames.has(k))) {
-      return { path: obj as Record<string, ParamValue>, search: {} };
-    }
   }
 
-  // No param-name overlap — treat `hash`/`base` strings as explicit-form extras.
-  if (keys.some((k) => (k === "hash" || k === "base") && typeof obj[k] === "string")) {
-    const explicit = options as {
-      hash?: string;
-      base?: string;
-    };
-    return {
-      path: {},
-      search: {},
-      hash: explicit.hash,
-      base: explicit.base,
-    };
-  }
+  const explicit = options as {
+    path?: Record<string, ParamValue>;
+    search?: Record<string, string | string[]>;
+    hash?: string;
+    relative?: boolean;
+    base?: string;
+  };
 
-  // Flat object → all path params
-  return { path: obj as Record<string, ParamValue>, search: {} };
+  return {
+    path: explicit.path ?? {},
+    search: explicit.search ?? {},
+    hash: explicit.hash,
+    relative: explicit.relative,
+    base: explicit.base,
+  };
 }
 
 /**
@@ -749,6 +784,17 @@ function normalizeTrailingSlash(url: string): string {
   return normalized + suffix;
 }
 
+function windowOrigin(): string | undefined {
+  try {
+    if (typeof window === "undefined") return undefined;
+    const origin = window.location?.origin;
+    // Some runtimes expose "null" for opaque origins (e.g. file://); treat as unresolved.
+    return origin && origin !== "null" ? origin : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function importMetaEnv(key: string): string | undefined {
   try {
     // @ts-expect-error — import.meta.env may not exist in all runtimes
@@ -778,7 +824,10 @@ function bunEnv(key: string): string | undefined {
 
 function processEnv(key: string): string | undefined {
   try {
-    return typeof process !== "undefined" ? process.env[key] : undefined;
+    // @ts-ignore — process global may not exist in non-Node runtimes
+    return typeof process !== "undefined"
+      ? (process as any).env[key]
+      : undefined;
   } catch {
     return undefined;
   }
