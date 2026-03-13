@@ -508,6 +508,9 @@ function resolveBase(config: RouteConfig): string {
   } else if ((env = envLookup(config.envKey ?? "API_BASE"))) {
     raw = env;
     source = `env.${config.envKey ?? "API_BASE"}`;
+  } else if ((env = windowOrigin())) {
+    raw = env;
+    source = "window.location.origin";
   } else if (config.fallback) {
     raw = config.fallback;
     source = "config.fallback";
@@ -747,6 +750,17 @@ function normalizeTrailingSlash(url: string): string {
   const normalized = pathname.replace(/\/+$/, "");
 
   return normalized + suffix;
+}
+
+function windowOrigin(): string | undefined {
+  try {
+    if (typeof window === "undefined") return undefined;
+    const origin = window.location?.origin;
+    // Some runtimes expose "null" for opaque origins (e.g. file://); treat as unresolved.
+    return origin && origin !== "null" ? origin : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function importMetaEnv(key: string): string | undefined {
