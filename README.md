@@ -29,7 +29,7 @@ import { route } from "typesafe-route";
 // In a TanStack Query hook
 useSuspenseQuery({
   queryKey: ["bookmarks", id],
-  queryFn: () => fetch(route("/api/bookmarks/:id", { path: { id } })).then(r => r.json()),
+  queryFn: () => fetch(route("/api/bookmarks/:id", { path: { id } })).then((r) => r.json()),
 });
 ```
 
@@ -57,7 +57,7 @@ const userRoute = createRoute("/api/users/:id");
 function useUser(id: string) {
   return useSuspenseQuery({
     queryKey: [userRoute.pattern, id],
-    queryFn: () => fetch(userRoute({ path: { id } })).then(r => r.json())
+    queryFn: () => fetch(userRoute({ path: { id } })).then((r) => r.json()),
   });
 }
 
@@ -65,16 +65,16 @@ function useUser(id: string) {
 async function updateUser(id: string, data: UserData) {
   await fetch(route("/api/users/:id", { path: { id } }), {
     method: "PUT",
-    body: JSON.stringify(data)
+    body: JSON.stringify(data),
   });
 }
 
 // Search/filtering with query params
 const products = await fetch(
   route("/api/products", {
-    search: { category: "shoes", size: ["9", "10"], sort: "price" }
-  })
-).then(r => r.json());
+    search: { category: "shoes", size: ["9", "10"], sort: "price" },
+  }),
+).then((r) => r.json());
 // → /api/products?category=shoes&size=9&size=10&sort=price
 ```
 
@@ -106,7 +106,7 @@ Deno.serve((req) => {
     return getProducts({
       id: productMatch.path.id,
       category,
-      sort
+      sort,
     });
   }
 
@@ -222,12 +222,12 @@ route("/api/users/:id", {
 // → "https://users.internal/api/users/42"
 
 // Optional param — omit or provide
-route("/api/bookmarks/:id?", {});           // → ".../api/bookmarks"
+route("/api/bookmarks/:id?", {}); // → ".../api/bookmarks"
 route("/api/bookmarks/:id?", { path: { id: "42" } }); // → ".../api/bookmarks/42"
 
 // Wildcard — zero-or-more segments (slashes preserved)
 route("/files/:path*", { path: { path: "docs/readme.md" } }); // → ".../files/docs/readme.md"
-route("/files/:path*");                              // → ".../files"
+route("/files/:path*"); // → ".../files"
 
 // Wildcard — one-or-more segments (required)
 route("/files/:path+", { path: { path: "docs/readme.md" } }); // → ".../files/docs/readme.md"
@@ -267,7 +267,7 @@ Both `route()` and `matchRoute()` infer param names from the pattern literal:
 ```ts
 const result = matchRoute("/api/:org/items/:id", url);
 result?.path.org; // ✅ typed as string
-result?.path.id;  // ✅ typed as string
+result?.path.id; // ✅ typed as string
 result?.path.foo; // ❌ type error
 ```
 
@@ -313,7 +313,7 @@ const bookmarks = routePattern("/api/bookmarks/:id");
 // Use .pattern for query keys
 useSuspenseQuery({
   queryKey: [bookmarks.pattern, id],
-  queryFn: () => fetch(bookmarks({ path: { id } })).then(r => r.json()),
+  queryFn: () => fetch(bookmarks({ path: { id } })).then((r) => r.json()),
 });
 
 // Match incoming URLs
@@ -331,11 +331,11 @@ Optional one-time setup. Call at app startup.
 
 ```ts
 configureRoute({
-  base: "https://api.example.com",     // explicit base (skips env detection)
-  envKey: "BACKEND_URL",               // custom env variable name
-  fallback: "http://localhost:8080",   // dev fallback
-  trailingSlash: "strip",              // "strip" | "preserve"
-  verbose: true,                       // enable debug logging
+  base: "https://api.example.com", // explicit base (skips env detection)
+  envKey: "BACKEND_URL", // custom env variable name
+  fallback: "http://localhost:8080", // dev fallback
+  trailingSlash: "strip", // "strip" | "preserve"
+  verbose: true, // enable debug logging
 });
 ```
 
@@ -356,14 +356,15 @@ configureRoute({ verbose: false });
 // Granular control
 configureRoute({
   verbose: {
-    base: true,   // Log base URL resolution (once)
-    build: true,  // Log each route() call
+    base: true, // Log base URL resolution (once)
+    build: true, // Log each route() call
     match: false, // Don't log matchRoute() (can be very noisy)
-  }
+  },
 });
 ```
 
 Example output (automatically shown in dev):
+
 ```
 [typesafe-route] Base URL: http://localhost:3000 (source: fallback)
 [typesafe-route] /api/users/:id → http://localhost:3000/api/users/42
@@ -390,12 +391,11 @@ Get both the resolved base URL and its source.
 
 ```ts
 const info = getBaseInfo();
-console.log(info.base);   // "https://api.example.com"
+console.log(info.base); // "https://api.example.com"
 console.log(info.source); // "config.base" | "env.API_BASE" | "window.location.origin" | "config.fallback" | "fallback"
 ```
 
 **Env-source testability:** `getBaseInfo().source` reports env-derived values as `"env.<KEY>"` (for example `"env.API_BASE"`), which makes assertions straightforward in tests.
-
 
 ### `isURLPatternSupported()`
 
@@ -433,24 +433,24 @@ console.log("Trailing slash:", config.trailingSlash);
 Param names are extracted from the pattern string literal at compile time:
 
 ```ts
-route("/api/bookmarks/:id", { path: { id: "42" } });          // ✅
-route("/api/bookmarks/:id", { path: { name: "oops" } });       // ❌ type error
-route("/api/:org/bookmarks/:id", { path: { org: "acme" } });   // ❌ missing `id`
-route("/api/bookmarks");                              // ✅ no params required
-route("/api/bookmarks/:id?");                         // ✅ optional — args can be omitted
-route("/api/:org/bookmarks/:id?", { path: { org: "acme" } });  // ✅ only required params needed
+route("/api/bookmarks/:id", { path: { id: "42" } }); // ✅
+route("/api/bookmarks/:id", { path: { name: "oops" } }); // ❌ type error
+route("/api/:org/bookmarks/:id", { path: { org: "acme" } }); // ❌ missing `id`
+route("/api/bookmarks"); // ✅ no params required
+route("/api/bookmarks/:id?"); // ✅ optional — args can be omitted
+route("/api/:org/bookmarks/:id?", { path: { org: "acme" } }); // ✅ only required params needed
 ```
 
 ### Optional and wildcard modifiers
 
 Modifiers follow the [URLPattern](https://developer.mozilla.org/en-US/docs/Web/API/URLPattern) syntax:
 
-| Modifier | Meaning | Type behavior |
-|----------|---------|---------------|
-| `:id` | Required, single segment | Required key |
-| `:id?` | Optional, single segment | Optional key |
-| `:path*` | Zero-or-more segments | Optional key, `/` preserved |
-| `:path+` | One-or-more segments | Required key, `/` preserved |
+| Modifier | Meaning                  | Type behavior               |
+| -------- | ------------------------ | --------------------------- |
+| `:id`    | Required, single segment | Required key                |
+| `:id?`   | Optional, single segment | Optional key                |
+| `:path*` | Zero-or-more segments    | Optional key, `/` preserved |
+| `:path+` | One-or-more segments     | Required key, `/` preserved |
 
 When all params are optional (`?` or `*`), the options argument can be omitted entirely.
 
@@ -493,9 +493,9 @@ Path params are always encoded via `encodeURIComponent` — pass raw values, not
 Controlled via `configureRoute({ trailingSlash })`:
 
 | Mode         | `/api/bookmarks/` | `/api/bookmarks` |
-| ------------ | ------------------ | ----------------- |
-| `"strip"`    | `/api/bookmarks`   | `/api/bookmarks`  |
-| `"preserve"` | `/api/bookmarks/`  | `/api/bookmarks`  |
+| ------------ | ----------------- | ---------------- |
+| `"strip"`    | `/api/bookmarks`  | `/api/bookmarks` |
+| `"preserve"` | `/api/bookmarks/` | `/api/bookmarks` |
 
 Default is `"preserve"` (URLs are not modified).
 
@@ -514,16 +514,16 @@ deno publish       # publish to JSR
 
 ```ts
 import type {
-  ParamValue,        // string | number
-  StripModifier,     // strips ?, *, + suffixes from param names
-  ExtractParams,     // template literal type — extracts ":param" names
-  RouteBuildExtras,  // extra options (search, hash, relative, base)
-  RouteOptions,      // options union for route()
-  MatchResult,       // return type of matchRoute()
-  BoundRoute,        // return type of routePattern()
-  RouteConfig,       // config for configureRoute()
-  BaseSource,        // source literals for resolved base
-  BaseInfo,          // resolved base debug info
+  ParamValue, // string | number
+  StripModifier, // strips ?, *, + suffixes from param names
+  ExtractParams, // template literal type — extracts ":param" names
+  RouteBuildExtras, // extra options (search, hash, relative, base)
+  RouteOptions, // options union for route()
+  MatchResult, // return type of matchRoute()
+  BoundRoute, // return type of routePattern()
+  RouteConfig, // config for configureRoute()
+  BaseSource, // source literals for resolved base
+  BaseInfo, // resolved base debug info
 } from "typesafe-route";
 ```
 

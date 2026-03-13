@@ -7,12 +7,7 @@
     "lib": ["esnext", "dom", "dom.iterable"]
   },
   "publish": {
-    "include": [
-      "src/index.ts",
-      "deno.json",
-      "README.md",
-      "LICENSE"
-    ]
+    "include": ["src/index.ts", "deno.json", "README.md", "LICENSE"]
   },
   "tasks": {
     "test": "vp test",

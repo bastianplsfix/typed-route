@@ -12,6 +12,7 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 Initial release as `typesafe-route` (npm) / `@bastianplsfix/typesafe-route` (JSR).
 
 ### Added
+
 - `route(pattern, options?)` — type-safe URL builder with compile-time param extraction.
 - `matchRoute(pattern, url)` — URL matching via URLPattern with typed params.
 - `tryMatchRoute(pattern, url)` — non-throwing variant of `matchRoute()`.

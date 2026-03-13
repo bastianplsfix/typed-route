@@ -31,17 +31,19 @@
 export type ParamValue = string | number;
 
 /** Strip modifier suffixes (`?`, `*`, `+`) from a param name. */
-export type StripModifier<T extends string> = T extends
-  `${infer Name}${"?" | "*" | "+"}` ? Name : T;
+export type StripModifier<T extends string> = T extends `${infer Name}${"?" | "*" | "+"}`
+  ? Name
+  : T;
 
 /**
  * Extract raw `:param` tokens (including modifiers) from a pattern string literal.
  * @internal
  */
-type RawParams<T extends string> = T extends
-  `${string}:${infer Param}/${infer Rest}` ? Param | RawParams<Rest>
-  : T extends `${string}:${infer Param}` ? Param
-  : never;
+type RawParams<T extends string> = T extends `${string}:${infer Param}/${infer Rest}`
+  ? Param | RawParams<Rest>
+  : T extends `${string}:${infer Param}`
+    ? Param
+    : never;
 
 /**
  * Extract `:param` names from a pattern string literal, stripping modifiers.
@@ -81,16 +83,14 @@ export interface RouteBuildExtras {
  * - Patterns with only optional params allow omitting `path` (or options entirely).
  * - Patterns with no params accept `RouteBuildExtras` (or no options).
  */
-export type RouteOptions<K extends string = string, T extends string = string> =
-  [K] extends [never] ? RouteBuildExtras | undefined
-    : [RequiredParams<T>] extends [never] ?
-        | ({ path?: Partial<Record<K, ParamValue>> } & RouteBuildExtras)
-        | undefined
-    : ({
-      path:
-        & Record<RequiredParams<T>, ParamValue>
-        & Partial<Record<OptionalParams<T>, ParamValue>>;
-    } & RouteBuildExtras);
+export type RouteOptions<K extends string = string, T extends string = string> = [K] extends [never]
+  ? RouteBuildExtras | undefined
+  : [RequiredParams<T>] extends [never]
+    ? ({ path?: Partial<Record<K, ParamValue>> } & RouteBuildExtras) | undefined
+    : {
+        path: Record<RequiredParams<T>, ParamValue> &
+          Partial<Record<OptionalParams<T>, ParamValue>>;
+      } & RouteBuildExtras;
 
 /** Result of matching a URL against a pattern via {@linkcode matchRoute}. */
 export interface MatchResult<K extends string = string> {
@@ -138,10 +138,10 @@ export interface RouteConfig {
   verbose?:
     | boolean
     | {
-      base?: boolean;
-      build?: boolean;
-      match?: boolean;
-    };
+        base?: boolean;
+        build?: boolean;
+        match?: boolean;
+      };
 }
 
 /** Base URL source literals exposed for diagnostics and testing. */
@@ -326,7 +326,7 @@ export function route<T extends string>(
     ? [options?: RouteBuildExtras]
     : [RequiredParams<T>] extends [never]
       ? [options?: RouteOptions<ExtractParams<T>, T>]
-    : [options: RouteOptions<ExtractParams<T>, T>]
+      : [options: RouteOptions<ExtractParams<T>, T>]
 ): string {
   validatePattern(pattern as string);
   rejectRegexPattern(pattern as string);
@@ -340,9 +340,9 @@ export function route<T extends string>(
   const unreplaced = pathname.match(/:([a-zA-Z_]\w*)[?*+]?/g);
   if (unreplaced) {
     throw new Error(
-      `Unreplaced params in "${pattern}": ${unreplaced.join(", ")}. Received: ${
-        JSON.stringify(normalized.path)
-      }`,
+      `Unreplaced params in "${pattern}": ${unreplaced.join(", ")}. Received: ${JSON.stringify(
+        normalized.path,
+      )}`,
     );
   }
 
@@ -481,10 +481,11 @@ export interface BoundRoute<T extends string> {
 
   /** Build a URL from this pattern. Same args as `route()` minus the pattern. */
   (
-    ...args: [ExtractParams<T>] extends [never] ? [options?: RouteBuildExtras]
+    ...args: [ExtractParams<T>] extends [never]
+      ? [options?: RouteBuildExtras]
       : [RequiredParams<T>] extends [never]
         ? [options?: RouteOptions<ExtractParams<T>, T>]
-      : [options: RouteOptions<ExtractParams<T>, T>]
+        : [options: RouteOptions<ExtractParams<T>, T>]
   ): string;
 
   /** Match a URL against this pattern. */
@@ -543,8 +544,7 @@ export const createRoute = routePattern;
  */
 function shouldLog(category: "base" | "build" | "match"): boolean {
   // Auto-enable verbose in dev unless explicitly disabled
-  const isDev = !!importMetaEnv("DEV") ||
-    processEnv("NODE_ENV") === "development";
+  const isDev = !!importMetaEnv("DEV") || processEnv("NODE_ENV") === "development";
 
   const verboseConfig = _config.verbose ?? (isDev ? true : false);
 
@@ -605,10 +605,7 @@ function resolveBase(config: RouteConfig): BaseInfo {
   }
 
   // Warn in dev when localhost base is active (common misconfiguration).
-  if (
-    base === "http://localhost:3000" && shouldLog("base") &&
-    typeof console !== "undefined"
-  ) {
+  if (base === "http://localhost:3000" && shouldLog("base") && typeof console !== "undefined") {
     console.warn(
       "[typesafe-route] Using localhost base: http://localhost:3000. " +
         "Set API_BASE env var or call configureRoute({ base: '...' }) if unintended.",
@@ -616,13 +613,12 @@ function resolveBase(config: RouteConfig): BaseInfo {
   }
 
   // In production, localhost is likely wrong — warn to prevent silent bugs
-  const isProduction = processEnv("NODE_ENV") === "production" ||
+  const isProduction =
+    processEnv("NODE_ENV") === "production" ||
     !!importMetaEnv("PROD") ||
     importMetaEnv("MODE") === "production";
 
-  if (
-    isProduction && (base.includes("localhost") || base.includes("127.0.0.1"))
-  ) {
+  if (isProduction && (base.includes("localhost") || base.includes("127.0.0.1"))) {
     console.warn(
       "[typesafe-route] Warning: using localhost/127.0.0.1 in production. " +
         "Set API_BASE environment variable or call configureRoute({ base: '...' })",
@@ -635,10 +631,10 @@ function resolveBase(config: RouteConfig): BaseInfo {
 function envLookup(key: string): string | undefined {
   return (
     importMetaEnv(key) ??
-      importMetaEnv(`VITE_${key}`) ??
-      denoEnv(key) ??
-      bunEnv(key) ??
-      processEnv(key)
+    importMetaEnv(`VITE_${key}`) ??
+    denoEnv(key) ??
+    bunEnv(key) ??
+    processEnv(key)
   );
 }
 
@@ -652,9 +648,7 @@ interface NormalizedOptions {
 
 const EXTRA_KEYS = new Set(["path", "search", "hash", "relative", "base"]);
 
-function normalizeOptions(
-  options?: RouteOptions<string> | RouteBuildExtras,
-): NormalizedOptions {
+function normalizeOptions(options?: RouteOptions<string> | RouteBuildExtras): NormalizedOptions {
   if (!options) return { path: {}, search: {} };
 
   const obj = options as Record<string, unknown>;
@@ -694,47 +688,35 @@ function normalizeOptions(
  * - Zero-or-more wildcards (`:name*`) are removed when missing.
  * - One-or-more wildcards (`:name+`) are treated as required.
  */
-function replaceParams(
-  pathname: string,
-  params: Record<string, ParamValue>,
-): string {
+function replaceParams(pathname: string, params: Record<string, ParamValue>): string {
   // Handle optional params — remove segment when value is absent
-  pathname = pathname.replace(
-    /\/:([a-zA-Z_]\w*)\?/g,
-    (_, name) => {
-      if (name in params && params[name] !== undefined) {
-        return `/${encodeURIComponent(String(params[name]))}`;
-      }
-      return "";
-    },
-  );
+  pathname = pathname.replace(/\/:([a-zA-Z_]\w*)\?/g, (_, name) => {
+    if (name in params && params[name] !== undefined) {
+      return `/${encodeURIComponent(String(params[name]))}`;
+    }
+    return "";
+  });
 
   // Handle wildcard params (*, +) — don't encode `/` separators
-  pathname = pathname.replace(
-    /:([a-zA-Z_]\w*)([*+])/g,
-    (match, name, modifier) => {
-      if (name in params && params[name] !== undefined) {
-        // Encode each segment individually, preserving `/`
-        return String(params[name])
-          .split("/")
-          .map((seg) => encodeURIComponent(seg))
-          .join("/");
-      }
-      if (modifier === "*") return "";
-      // `+` is required — leave the token for the unreplaced check
-      return match;
-    },
-  );
+  pathname = pathname.replace(/:([a-zA-Z_]\w*)([*+])/g, (match, name, modifier) => {
+    if (name in params && params[name] !== undefined) {
+      // Encode each segment individually, preserving `/`
+      return String(params[name])
+        .split("/")
+        .map((seg) => encodeURIComponent(seg))
+        .join("/");
+    }
+    if (modifier === "*") return "";
+    // `+` is required — leave the token for the unreplaced check
+    return match;
+  });
 
   // Handle regular required params — use a regex with word boundary to avoid
   // replacing inside already-substituted values or partial matches.
   for (const [key, value] of Object.entries(params)) {
     const encoded = encodeURIComponent(String(value));
     const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    pathname = pathname.replace(
-      new RegExp(`:${escapedKey}(?=[\\/?#]|$)(?![?*+])`, "g"),
-      encoded,
-    );
+    pathname = pathname.replace(new RegExp(`:${escapedKey}(?=[\\/?#]|$)(?![?*+])`, "g"), encoded);
   }
 
   // Clean up double slashes left by removed optional segments
@@ -825,9 +807,8 @@ function processEnv(key: string): string | undefined {
     // @ts-ignore — process global may not exist in non-Node runtimes
     // deno-lint-ignore no-process-global
     return typeof process !== "undefined"
-      // deno-lint-ignore no-process-global no-explicit-any
-      // @ts-ignore — process global may not exist in non-Node runtimes
-      ? (process as any).env[key]
+      ? // @ts-ignore — process global may not exist in non-Node runtimes
+        (process as any).env[key]
       : undefined;
   } catch {
     return undefined;

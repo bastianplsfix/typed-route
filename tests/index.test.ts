@@ -28,16 +28,16 @@ test("route: no params", () => {
 
 test("route: single path param (explicit path)", () => {
   setup();
-  expect(
-    route("/api/bookmarks/:id", { path: { id: "42" } }),
-  ).toBe("http://localhost:3000/api/bookmarks/42");
+  expect(route("/api/bookmarks/:id", { path: { id: "42" } })).toBe(
+    "http://localhost:3000/api/bookmarks/42",
+  );
 });
 
 test("route: multiple path params", () => {
   setup();
-  expect(
-    route("/api/:org/bookmarks/:id", { path: { org: "acme", id: "42" } }),
-  ).toBe("http://localhost:3000/api/acme/bookmarks/42");
+  expect(route("/api/:org/bookmarks/:id", { path: { org: "acme", id: "42" } })).toBe(
+    "http://localhost:3000/api/acme/bookmarks/42",
+  );
 });
 
 test("route: explicit path + search", () => {
@@ -67,31 +67,31 @@ test("route: array search params", () => {
 
 test("route: numeric path param", () => {
   setup();
-  expect(
-    route("/api/bookmarks/:id", { path: { id: 42 } }),
-  ).toBe("http://localhost:3000/api/bookmarks/42");
+  expect(route("/api/bookmarks/:id", { path: { id: 42 } })).toBe(
+    "http://localhost:3000/api/bookmarks/42",
+  );
 });
 
 test("route: encodes path params", () => {
   setup();
-  expect(
-    route("/api/search/:query", { path: { query: "hello world" } }),
-  ).toBe("http://localhost:3000/api/search/hello%20world");
+  expect(route("/api/search/:query", { path: { query: "hello world" } })).toBe(
+    "http://localhost:3000/api/search/hello%20world",
+  );
 });
 
 test("route: always encodes params (no pre-encoded pass-through)", () => {
   setup();
-  expect(
-    route("/api/search/:query", { path: { query: "hello%20world" } }),
-  ).toBe("http://localhost:3000/api/search/hello%2520world");
+  expect(route("/api/search/:query", { path: { query: "hello%20world" } })).toBe(
+    "http://localhost:3000/api/search/hello%2520world",
+  );
 });
 
 test("route: throws on unreplaced params", () => {
   setup();
   const pattern = "/api/bookmarks/:id" as string;
-  expect(
-    () => (route as any)(pattern, {}),
-  ).toThrow('Unreplaced params in "/api/bookmarks/:id": :id');
+  expect(() => (route as any)(pattern, {})).toThrow(
+    'Unreplaced params in "/api/bookmarks/:id": :id',
+  );
 });
 
 test("route: throws listing all unreplaced params", () => {
@@ -106,19 +106,13 @@ test("route: throws listing all unreplaced params", () => {
 
 test("trailing slash: preserves by default", () => {
   setup();
-  expect(
-    route("/api/bookmarks/"),
-  ).toBe("http://localhost:3000/api/bookmarks/");
-  expect(
-    route("/api/bookmarks"),
-  ).toBe("http://localhost:3000/api/bookmarks");
+  expect(route("/api/bookmarks/")).toBe("http://localhost:3000/api/bookmarks/");
+  expect(route("/api/bookmarks")).toBe("http://localhost:3000/api/bookmarks");
 });
 
 test("trailing slash: strips when configured", () => {
   configureRoute({ base: "http://localhost:3000", trailingSlash: "strip" });
-  expect(
-    route("/api/bookmarks/"),
-  ).toBe("http://localhost:3000/api/bookmarks");
+  expect(route("/api/bookmarks/")).toBe("http://localhost:3000/api/bookmarks");
 });
 
 // ---------------------------------------------------------------------------
@@ -127,10 +121,7 @@ test("trailing slash: strips when configured", () => {
 
 test("matchRoute: extracts path params", () => {
   setup();
-  const result = matchRoute(
-    "/api/bookmarks/:id",
-    "http://localhost:3000/api/bookmarks/42",
-  );
+  const result = matchRoute("/api/bookmarks/:id", "http://localhost:3000/api/bookmarks/42");
   expect(result).toEqual({ path: { id: "42" }, search: {} });
 });
 
@@ -154,46 +145,31 @@ test("matchRoute: extracts search params", () => {
 
 test("matchRoute: preserves array search params", () => {
   setup();
-  const result = matchRoute(
-    "/api/bookmarks",
-    "http://localhost:3000/api/bookmarks?tag=a&tag=b",
-  );
+  const result = matchRoute("/api/bookmarks", "http://localhost:3000/api/bookmarks?tag=a&tag=b");
   expect(result).toEqual({ path: {}, search: { tag: ["a", "b"] } });
 });
 
 test("matchRoute: single search param stays as string", () => {
   setup();
-  const result = matchRoute(
-    "/api/bookmarks",
-    "http://localhost:3000/api/bookmarks?tag=a",
-  );
+  const result = matchRoute("/api/bookmarks", "http://localhost:3000/api/bookmarks?tag=a");
   expect(result).toEqual({ path: {}, search: { tag: "a" } });
 });
 
 test("matchRoute: returns null on mismatch", () => {
   setup();
-  const result = matchRoute(
-    "/api/bookmarks/:id",
-    "http://localhost:3000/api/users/42",
-  );
+  const result = matchRoute("/api/bookmarks/:id", "http://localhost:3000/api/users/42");
   expect(result).toBeNull();
 });
 
 test("matchRoute: supports relative URLs", () => {
   setup();
-  const result = matchRoute(
-    "/api/bookmarks/:id",
-    "/api/bookmarks/42",
-  );
+  const result = matchRoute("/api/bookmarks/:id", "/api/bookmarks/42");
   expect(result).toEqual({ path: { id: "42" }, search: {} });
 });
 
 test("matchRoute: supports relative URLs with search params", () => {
   setup();
-  const result = matchRoute(
-    "/api/bookmarks/:id",
-    "/api/bookmarks/42?fields=title",
-  );
+  const result = matchRoute("/api/bookmarks/:id", "/api/bookmarks/42?fields=title");
   expect(result).toEqual({ path: { id: "42" }, search: { fields: "title" } });
 });
 
@@ -219,17 +195,13 @@ test("routePattern: exposes .pattern", () => {
 test("routePattern: builds URLs when called", () => {
   setup();
   const bookmarks = routePattern("/api/bookmarks/:id");
-  expect(
-    bookmarks({ path: { id: "42" } }),
-  ).toBe("http://localhost:3000/api/bookmarks/42");
+  expect(bookmarks({ path: { id: "42" } })).toBe("http://localhost:3000/api/bookmarks/42");
 });
 
 test("routePattern: builds with search params", () => {
   setup();
   const bookmarks = routePattern("/api/bookmarks");
-  expect(
-    bookmarks({ search: { page: "1" } }),
-  ).toBe("http://localhost:3000/api/bookmarks?page=1");
+  expect(bookmarks({ search: { page: "1" } })).toBe("http://localhost:3000/api/bookmarks?page=1");
 });
 
 test("routePattern: no-param pattern callable without args", () => {
@@ -248,9 +220,7 @@ test("routePattern: .match() delegates to matchRoute", () => {
 test("routePattern: .match() returns null on mismatch", () => {
   setup();
   const bookmarks = routePattern("/api/bookmarks/:id");
-  expect(
-    bookmarks.match("http://localhost:3000/api/users/42"),
-  ).toBeNull();
+  expect(bookmarks.match("http://localhost:3000/api/users/42")).toBeNull();
 });
 
 test("routePattern: pattern is read-only", () => {
@@ -331,9 +301,7 @@ test("resetRouteConfig: clears cached source info", () => {
 
 test("hash: appends fragment to URL", () => {
   setup();
-  expect(
-    route("/docs", { hash: "installation" }),
-  ).toBe("http://localhost:3000/docs#installation");
+  expect(route("/docs", { hash: "installation" })).toBe("http://localhost:3000/docs#installation");
 });
 
 test("hash: with path params", () => {
@@ -405,9 +373,7 @@ test("relative: includes search and hash", () => {
 
 test("relative: no params pattern", () => {
   setup();
-  expect(
-    route("/api/health", { relative: true }),
-  ).toBe("/api/health");
+  expect(route("/api/health", { relative: true })).toBe("/api/health");
 });
 
 // ---------------------------------------------------------------------------
@@ -426,16 +392,14 @@ test("base: overrides global config", () => {
 
 test("base: strips trailing slash", () => {
   setup();
-  expect(
-    route("/api/users", { base: "https://users.internal/" }),
-  ).toBe("https://users.internal/api/users");
+  expect(route("/api/users", { base: "https://users.internal/" })).toBe(
+    "https://users.internal/api/users",
+  );
 });
 
 test("base: no params pattern", () => {
   setup();
-  expect(
-    route("/health", { base: "https://other.service" }),
-  ).toBe("https://other.service/health");
+  expect(route("/health", { base: "https://other.service" })).toBe("https://other.service/health");
 });
 
 test("base: combined with search and hash", () => {
@@ -456,37 +420,33 @@ test("base: combined with search and hash", () => {
 
 test("optional param: omitted", () => {
   setup();
-  expect(
-    route("/api/bookmarks/:id?", {}),
-  ).toBe("http://localhost:3000/api/bookmarks");
+  expect(route("/api/bookmarks/:id?", {})).toBe("http://localhost:3000/api/bookmarks");
 });
 
 test("optional param: provided", () => {
   setup();
-  expect(
-    route("/api/bookmarks/:id?", { path: { id: "42" } }),
-  ).toBe("http://localhost:3000/api/bookmarks/42");
+  expect(route("/api/bookmarks/:id?", { path: { id: "42" } })).toBe(
+    "http://localhost:3000/api/bookmarks/42",
+  );
 });
 
 test("optional param: no args when all optional", () => {
   setup();
-  expect(
-    route("/api/bookmarks/:id?"),
-  ).toBe("http://localhost:3000/api/bookmarks");
+  expect(route("/api/bookmarks/:id?")).toBe("http://localhost:3000/api/bookmarks");
 });
 
 test("optional param: mixed required and optional", () => {
   setup();
-  expect(
-    route("/api/:org/bookmarks/:id?", { path: { org: "acme" } }),
-  ).toBe("http://localhost:3000/api/acme/bookmarks");
+  expect(route("/api/:org/bookmarks/:id?", { path: { org: "acme" } })).toBe(
+    "http://localhost:3000/api/acme/bookmarks",
+  );
 });
 
 test("optional param: mixed required and optional, both provided", () => {
   setup();
-  expect(
-    route("/api/:org/bookmarks/:id?", { path: { org: "acme", id: "42" } }),
-  ).toBe("http://localhost:3000/api/acme/bookmarks/42");
+  expect(route("/api/:org/bookmarks/:id?", { path: { org: "acme", id: "42" } })).toBe(
+    "http://localhost:3000/api/acme/bookmarks/42",
+  );
 });
 
 test("optional param: with search params", () => {
@@ -514,37 +474,35 @@ test("optional param: omitted with search params", () => {
 
 test("wildcard *: with value", () => {
   setup();
-  expect(
-    route("/files/:path*", { path: { path: "docs/readme.md" } }),
-  ).toBe("http://localhost:3000/files/docs/readme.md");
+  expect(route("/files/:path*", { path: { path: "docs/readme.md" } })).toBe(
+    "http://localhost:3000/files/docs/readme.md",
+  );
 });
 
 test("wildcard *: omitted (zero-or-more)", () => {
   setup();
-  expect(
-    route("/files/:path*"),
-  ).toBe("http://localhost:3000/files/");
+  expect(route("/files/:path*")).toBe("http://localhost:3000/files/");
 });
 
 test("wildcard *: single segment", () => {
   setup();
-  expect(
-    route("/files/:path*", { path: { path: "readme.md" } }),
-  ).toBe("http://localhost:3000/files/readme.md");
+  expect(route("/files/:path*", { path: { path: "readme.md" } })).toBe(
+    "http://localhost:3000/files/readme.md",
+  );
 });
 
 test("wildcard +: with value", () => {
   setup();
-  expect(
-    route("/files/:path+", { path: { path: "docs/readme.md" } }),
-  ).toBe("http://localhost:3000/files/docs/readme.md");
+  expect(route("/files/:path+", { path: { path: "docs/readme.md" } })).toBe(
+    "http://localhost:3000/files/docs/readme.md",
+  );
 });
 
 test("wildcard: encodes segments individually", () => {
   setup();
-  expect(
-    route("/files/:path*", { path: { path: "my docs/hello world.md" } }),
-  ).toBe("http://localhost:3000/files/my%20docs/hello%20world.md");
+  expect(route("/files/:path*", { path: { path: "my docs/hello world.md" } })).toBe(
+    "http://localhost:3000/files/my%20docs/hello%20world.md",
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -553,19 +511,13 @@ test("wildcard: encodes segments individually", () => {
 
 test("matchRoute: optional param present", () => {
   setup();
-  const result = matchRoute(
-    "/api/bookmarks/:id?",
-    "http://localhost:3000/api/bookmarks/42",
-  );
+  const result = matchRoute("/api/bookmarks/:id?", "http://localhost:3000/api/bookmarks/42");
   expect(result?.path.id).toBe("42");
 });
 
 test("matchRoute: wildcard param", () => {
   setup();
-  const result = matchRoute(
-    "/files/:path*",
-    "http://localhost:3000/files/docs/readme.md",
-  );
+  const result = matchRoute("/files/:path*", "http://localhost:3000/files/docs/readme.md");
   expect(result?.path.path).toBe("docs/readme.md");
 });
 
@@ -593,16 +545,16 @@ test("round-trip: wildcard param", () => {
 
 test("encoding: percent signs are always encoded", () => {
   setup();
-  expect(
-    route("/api/search/:query", { path: { query: "100%natural" } }),
-  ).toBe("http://localhost:3000/api/search/100%25natural");
+  expect(route("/api/search/:query", { path: { query: "100%natural" } })).toBe(
+    "http://localhost:3000/api/search/100%25natural",
+  );
 });
 
 test("encoding: spaces are always encoded", () => {
   setup();
-  expect(
-    route("/api/search/:query", { path: { query: "hello world" } }),
-  ).toBe("http://localhost:3000/api/search/hello%20world");
+  expect(route("/api/search/:query", { path: { query: "hello world" } })).toBe(
+    "http://localhost:3000/api/search/hello%20world",
+  );
 });
 
 test("encoding: literal %20 round-trips correctly", () => {
@@ -619,16 +571,14 @@ test("encoding: literal %20 round-trips correctly", () => {
 
 test("trailing slash: strip mode with hash and no query", () => {
   configureRoute({ base: "http://localhost:3000", trailingSlash: "strip" });
-  expect(
-    route("/docs/", { hash: "section" }),
-  ).toBe("http://localhost:3000/docs#section");
+  expect(route("/docs/", { hash: "section" })).toBe("http://localhost:3000/docs#section");
 });
 
 test("trailing slash: strip mode with hash and query", () => {
   configureRoute({ base: "http://localhost:3000", trailingSlash: "strip" });
-  expect(
-    route("/docs/", { search: { v: "2" }, hash: "section" }),
-  ).toBe("http://localhost:3000/docs?v=2#section");
+  expect(route("/docs/", { search: { v: "2" }, hash: "section" })).toBe(
+    "http://localhost:3000/docs?v=2#section",
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -637,25 +587,20 @@ test("trailing slash: strip mode with hash and query", () => {
 
 test("options: throws when using top-level path params", () => {
   setup();
-  expect(
-    () => (route as any)("/api/:id", { id: "42" }),
-  ).toThrow("Invalid route options");
+  expect(() => (route as any)("/api/:id", { id: "42" })).toThrow("Invalid route options");
 });
 
 test("options: throws when using multiple top-level params", () => {
   setup();
-  expect(
-    () => (route as any)("/api/:org/:id", { org: "acme", id: "42" }),
-  ).toThrow("Invalid route options");
+  expect(() => (route as any)("/api/:org/:id", { org: "acme", id: "42" })).toThrow(
+    "Invalid route options",
+  );
 });
 
 test("options: reserved-name params work via explicit path", () => {
   setup();
   expect(
-    route(
-      "/api/:search/:relative",
-      { path: { search: "users", relative: "yes" } } as any,
-    ),
+    route("/api/:search/:relative", { path: { search: "users", relative: "yes" } } as any),
   ).toBe("http://localhost:3000/api/users/yes");
 });
 
@@ -665,17 +610,14 @@ test("options: reserved-name params work via explicit path", () => {
 
 test("route: throws on pattern without leading slash", () => {
   setup();
-  expect(
-    () => (route as any)("api/bookmarks"),
-  ).toThrow('Pattern must start with "/"');
+  expect(() => (route as any)("api/bookmarks")).toThrow('Pattern must start with "/"');
 });
 
 test("matchRoute: throws on pattern without leading slash", () => {
   setup();
-  expect(
-    () =>
-      matchRoute("api/bookmarks" as any, "http://localhost:3000/api/bookmarks"),
-  ).toThrow('Pattern must start with "/"');
+  expect(() => matchRoute("api/bookmarks" as any, "http://localhost:3000/api/bookmarks")).toThrow(
+    'Pattern must start with "/"',
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -693,10 +635,7 @@ test("configureRoute: strips multiple trailing slashes from base", () => {
 
 test("matchRoute: decodes percent-encoded path params", () => {
   setup();
-  const result = matchRoute(
-    "/api/search/:query",
-    "http://localhost:3000/api/search/hello%20world",
-  );
+  const result = matchRoute("/api/search/:query", "http://localhost:3000/api/search/hello%20world");
   expect(result?.path).toEqual({ query: "hello world" });
 });
 
@@ -722,32 +661,26 @@ test("routePattern: optional-only pattern callable without args", () => {
 test("routePattern: optional-only pattern callable with args", () => {
   setup();
   const optRoute = routePattern("/api/bookmarks/:id?");
-  expect(
-    optRoute({ path: { id: "42" } }),
-  ).toBe("http://localhost:3000/api/bookmarks/42");
+  expect(optRoute({ path: { id: "42" } })).toBe("http://localhost:3000/api/bookmarks/42");
 });
 
 test("routePattern: wildcard+ pattern callable with args", () => {
   setup();
   const files = routePattern("/files/:p+");
-  expect(
-    files({ path: { p: "docs/readme.md" } }),
-  ).toBe("http://localhost:3000/files/docs/readme.md");
+  expect(files({ path: { p: "docs/readme.md" } })).toBe(
+    "http://localhost:3000/files/docs/readme.md",
+  );
 });
 
 test("unreplaced check: catches single-char wildcard+ param", () => {
   setup();
   const pattern = "/files/:a+" as string;
-  expect(
-    () => (route as any)(pattern, {}),
-  ).toThrow(":a+");
+  expect(() => (route as any)(pattern, {})).toThrow(":a+");
 });
 
 test("routePattern: throws eagerly on pattern without leading slash", () => {
   setup();
-  expect(
-    () => routePattern("api/bookmarks" as any),
-  ).toThrow('Pattern must start with "/"');
+  expect(() => routePattern("api/bookmarks" as any)).toThrow('Pattern must start with "/"');
 });
 
 // ---------------------------------------------------------------------------
@@ -756,16 +689,16 @@ test("routePattern: throws eagerly on pattern without leading slash", () => {
 
 test("options: reserved-name params 'hash' and 'base' work via explicit path", () => {
   setup();
-  expect(
-    route("/api/:hash/:base", { path: { hash: "abc", base: "main" } } as any),
-  ).toBe("http://localhost:3000/api/abc/main");
+  expect(route("/api/:hash/:base", { path: { hash: "abc", base: "main" } } as any)).toBe(
+    "http://localhost:3000/api/abc/main",
+  );
 });
 
 test("options: hash+base top-level keys are treated as explicit extras", () => {
   setup();
-  expect(
-    route("/api/bookmarks", { hash: "section", base: "http://other.com" }),
-  ).toBe("http://other.com/api/bookmarks#section");
+  expect(route("/api/bookmarks", { hash: "section", base: "http://other.com" })).toBe(
+    "http://other.com/api/bookmarks#section",
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -774,9 +707,9 @@ test("options: hash+base top-level keys are treated as explicit extras", () => {
 
 test("replaceParams: duplicate param name replaced in all positions", () => {
   setup();
-  expect(
-    (route as any)("/api/:id/copy/:id", { path: { id: "42" } }),
-  ).toBe("http://localhost:3000/api/42/copy/42");
+  expect((route as any)("/api/:id/copy/:id", { path: { id: "42" } })).toBe(
+    "http://localhost:3000/api/42/copy/42",
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -785,10 +718,7 @@ test("replaceParams: duplicate param name replaced in all positions", () => {
 
 test("matchRoute: handles malformed percent sequence without throwing", () => {
   setup();
-  const result = matchRoute(
-    "/api/:id",
-    "http://localhost:3000/api/%ZZ",
-  );
+  const result = matchRoute("/api/:id", "http://localhost:3000/api/%ZZ");
   expect(result?.path).toEqual({ id: "%ZZ" });
 });
 
@@ -804,9 +734,7 @@ test("isURLPatternSupported: reflects URLPattern availability", () => {
   } finally {
     (globalThis as any).URLPattern = original;
   }
-  expect(isURLPatternSupported()).toBe(
-    typeof (globalThis as any).URLPattern !== "undefined",
-  );
+  expect(isURLPatternSupported()).toBe(typeof (globalThis as any).URLPattern !== "undefined");
 });
 
 test("matchRoute: throws clear error when URLPattern is unavailable", () => {
@@ -814,9 +742,9 @@ test("matchRoute: throws clear error when URLPattern is unavailable", () => {
   const original = (globalThis as any).URLPattern;
   try {
     (globalThis as any).URLPattern = undefined;
-    expect(
-      () => matchRoute("/api/:id", "http://localhost:3000/api/42"),
-    ).toThrow("URLPattern is not available");
+    expect(() => matchRoute("/api/:id", "http://localhost:3000/api/42")).toThrow(
+      "URLPattern is not available",
+    );
   } finally {
     (globalThis as any).URLPattern = original;
   }
@@ -827,8 +755,7 @@ test("tryMatchRoute: returns null when URLPattern is unavailable", () => {
   const original = (globalThis as any).URLPattern;
   try {
     (globalThis as any).URLPattern = undefined;
-    expect(tryMatchRoute("/api/:id", "http://localhost:3000/api/42"))
-      .toBeNull();
+    expect(tryMatchRoute("/api/:id", "http://localhost:3000/api/42")).toBeNull();
   } finally {
     (globalThis as any).URLPattern = original;
   }
@@ -846,19 +773,13 @@ test("tryMatchRoute: returns match result when URLPattern is available", () => {
 
 test("matchRoute: regex constraint matches valid input", () => {
   setup();
-  const result = matchRoute(
-    "/api/:id(\\d+)" as any,
-    "http://localhost:3000/api/123",
-  );
+  const result = matchRoute("/api/:id(\\d+)" as any, "http://localhost:3000/api/123");
   expect(result?.path).toEqual({ id: "123" });
 });
 
 test("matchRoute: regex constraint rejects invalid input", () => {
   setup();
-  const result = matchRoute(
-    "/api/:id(\\d+)" as any,
-    "http://localhost:3000/api/abc",
-  );
+  const result = matchRoute("/api/:id(\\d+)" as any, "http://localhost:3000/api/abc");
   expect(result).toBeNull();
 });
 
@@ -879,12 +800,8 @@ test("createRoute: works as alias for routePattern", () => {
   setup();
   const users = createRoute("/api/users/:id");
   expect(users.pattern).toBe("/api/users/:id");
-  expect(users({ path: { id: "42" } })).toBe(
-    "http://localhost:3000/api/users/42",
-  );
-  expect(
-    users.match("http://localhost:3000/api/users/42")?.path,
-  ).toEqual({ id: "42" });
+  expect(users({ path: { id: "42" } })).toBe("http://localhost:3000/api/users/42");
+  expect(users.match("http://localhost:3000/api/users/42")?.path).toEqual({ id: "42" });
 });
 
 // ---------------------------------------------------------------------------
@@ -924,7 +841,5 @@ test("getBaseInfo: reports fallback source", () => {
 
 test("route: throws on regex pattern syntax", () => {
   setup();
-  expect(
-    () => (route as any)("/api/:id(\\d+)", { path: { id: "123" } }),
-  ).toThrow("regex syntax");
+  expect(() => (route as any)("/api/:id(\\d+)", { path: { id: "123" } })).toThrow("regex syntax");
 });

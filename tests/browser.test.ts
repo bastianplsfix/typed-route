@@ -114,10 +114,7 @@ test("browser: route() per-call base overrides origin", () => {
 test("browser: matchRoute() extracts params", () => {
   resetRouteConfig();
   configureRoute({});
-  const result = matchRoute(
-    "/api/users/:id",
-    `${globalThis.location.origin}/api/users/42`,
-  );
+  const result = matchRoute("/api/users/:id", `${globalThis.location.origin}/api/users/42`);
   expect(result).toEqual({ path: { id: "42" }, search: {} });
 });
 
@@ -131,10 +128,7 @@ test("browser: matchRoute() with relative URL uses browser origin", () => {
 test("browser: tryMatchRoute() works in browser", () => {
   resetRouteConfig();
   configureRoute({});
-  const result = tryMatchRoute(
-    "/api/users/:id",
-    `${globalThis.location.origin}/api/users/42`,
-  );
+  const result = tryMatchRoute("/api/users/:id", `${globalThis.location.origin}/api/users/42`);
   expect(result).toEqual({ path: { id: "42" }, search: {} });
 });
 

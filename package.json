@@ -1,26 +1,26 @@
 {
   "name": "typesafe-route",
-  "type": "module",
   "version": "0.1.0",
   "description": "Type-safe URL builder and matcher for fetch() calls. Extracts :param names at compile time, resolves base URLs from Vite/Deno/Bun/Node/browser, and matches URLs back into typed params via URLPattern. Zero dependencies.",
-  "author": "Sebastian Nomme <sebastian.nomme@icloud.com>",
-  "license": "MIT",
   "homepage": "https://github.com/bastianplsfix/typesafe-route#readme",
+  "bugs": {
+    "url": "https://github.com/bastianplsfix/typesafe-route/issues"
+  },
+  "license": "MIT",
+  "author": "Sebastian Nomme <sebastian.nomme@icloud.com>",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/bastianplsfix/typesafe-route.git"
   },
-  "bugs": {
-    "url": "https://github.com/bastianplsfix/typesafe-route/issues"
-  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "types": "./dist/index.d.mts",
   "exports": {
     ".": "./dist/index.mjs",
     "./package.json": "./package.json"
   },
-  "types": "./dist/index.d.mts",
-  "files": [
-    "dist"
-  ],
   "scripts": {
     "build": "vp pack",
     "dev": "vp pack --watch",

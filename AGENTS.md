@@ -28,29 +28,29 @@ typesafe-route/
 
 ## Public API
 
-| Export | Kind | Purpose |
-| --- | --- | --- |
-| `route(pattern, options?)` | function | Build a URL from a pattern + params |
-| `matchRoute(pattern, url)` | function | Parse a URL against a pattern → extracted params |
-| `tryMatchRoute(pattern, url)` | function | Non-throwing variant of `matchRoute()` |
-| `routePattern(pattern)` | function | Bind a pattern into a reusable callable |
-| `createRoute(pattern)` | function | Alias for `routePattern()` |
-| `configureRoute(config)` | function | One-time setup for base URL, env key, trailing slash, verbose |
-| `resetRouteConfig()` | function | Reset all config and cached state |
-| `getBaseURL()` | function | Get the current resolved base URL |
-| `getBaseInfo()` | function | Get base URL + its resolution source |
-| `getConfig()` | function | Get current config (read-only copy) |
-| `isURLPatternSupported()` | function | Check URLPattern availability |
-| `ExtractParams<T>` | type | Template literal type that extracts `:param` names |
-| `RouteOptions<K>` | type | Options union for `route()` |
-| `RouteBuildExtras` | type | Extra options (search, hash, relative, base) |
-| `MatchResult<K>` | type | Return type of `matchRoute()` |
-| `BoundRoute<T>` | type | Return type of `routePattern()` |
-| `RouteConfig` | interface | Config shape for `configureRoute()` |
-| `BaseSource` | type | Source literals for resolved base |
-| `BaseInfo` | type | Resolved base debug info |
-| `ParamValue` | type | `string \| number` |
-| `StripModifier` | type | Strips `?`, `*`, `+` suffixes from param names |
+| Export                        | Kind      | Purpose                                                       |
+| ----------------------------- | --------- | ------------------------------------------------------------- |
+| `route(pattern, options?)`    | function  | Build a URL from a pattern + params                           |
+| `matchRoute(pattern, url)`    | function  | Parse a URL against a pattern → extracted params              |
+| `tryMatchRoute(pattern, url)` | function  | Non-throwing variant of `matchRoute()`                        |
+| `routePattern(pattern)`       | function  | Bind a pattern into a reusable callable                       |
+| `createRoute(pattern)`        | function  | Alias for `routePattern()`                                    |
+| `configureRoute(config)`      | function  | One-time setup for base URL, env key, trailing slash, verbose |
+| `resetRouteConfig()`          | function  | Reset all config and cached state                             |
+| `getBaseURL()`                | function  | Get the current resolved base URL                             |
+| `getBaseInfo()`               | function  | Get base URL + its resolution source                          |
+| `getConfig()`                 | function  | Get current config (read-only copy)                           |
+| `isURLPatternSupported()`     | function  | Check URLPattern availability                                 |
+| `ExtractParams<T>`            | type      | Template literal type that extracts `:param` names            |
+| `RouteOptions<K>`             | type      | Options union for `route()`                                   |
+| `RouteBuildExtras`            | type      | Extra options (search, hash, relative, base)                  |
+| `MatchResult<K>`              | type      | Return type of `matchRoute()`                                 |
+| `BoundRoute<T>`               | type      | Return type of `routePattern()`                               |
+| `RouteConfig`                 | interface | Config shape for `configureRoute()`                           |
+| `BaseSource`                  | type      | Source literals for resolved base                             |
+| `BaseInfo`                    | type      | Resolved base debug info                                      |
+| `ParamValue`                  | type      | `string \| number`                                            |
+| `StripModifier`               | type      | Strips `?`, `*`, `+` suffixes from param names                |
 
 ## Key technical decisions
 
