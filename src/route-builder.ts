@@ -64,7 +64,7 @@ type OptionalParams<T extends string> =
   StripModifier<Extract<RawParams<T>, `${string}?` | `${string}*`>>;
 
 /** Extra options available in the explicit `{ path, ... }` form. */
-export interface RouteExtra {
+export interface RouteBuildExtras {
   search?: Record<string, string | string[]>;
   /** URL fragment (without the `#`). */
   hash?: string;
@@ -79,14 +79,14 @@ export interface RouteExtra {
  *
  * - Patterns with required params require `path`.
  * - Patterns with only optional params allow omitting `path` (or options entirely).
- * - Patterns with no params accept `RouteExtra` (or no options).
+ * - Patterns with no params accept `RouteBuildExtras` (or no options).
  */
 export type RouteOptions<K extends string = string, T extends string = string> =
   [K] extends [never]
-    ? RouteExtra | undefined
+    ? RouteBuildExtras | undefined
     : [RequiredParams<T>] extends [never]
-      ? ({ path?: Partial<Record<K, ParamValue>> } & RouteExtra) | undefined
-      : ({ path: Record<RequiredParams<T>, ParamValue> & Partial<Record<OptionalParams<T>, ParamValue>> } & RouteExtra);
+      ? ({ path?: Partial<Record<K, ParamValue>> } & RouteBuildExtras) | undefined
+      : ({ path: Record<RequiredParams<T>, ParamValue> & Partial<Record<OptionalParams<T>, ParamValue>> } & RouteBuildExtras);
 
 /** Result of matching a URL against a pattern via {@linkcode matchRoute}. */
 export interface MatchResult<K extends string = string> {
@@ -276,7 +276,7 @@ function rejectRegexPattern(pattern: string): void {
 export function route<T extends string>(
   pattern: T,
   ...[options]: [ExtractParams<T>] extends [never]
-    ? [options?: RouteExtra]
+    ? [options?: RouteBuildExtras]
     : [RequiredParams<T>] extends [never]
       ? [options?: RouteOptions<ExtractParams<T>, T>]
       : [options: RouteOptions<ExtractParams<T>, T>]
@@ -409,7 +409,7 @@ export interface BoundRoute<T extends string> {
   /** Build a URL from this pattern. Same args as `route()` minus the pattern. */
   (
     ...args: [ExtractParams<T>] extends [never]
-      ? [options?: RouteExtra]
+      ? [options?: RouteBuildExtras]
       : [RequiredParams<T>] extends [never]
         ? [options?: RouteOptions<ExtractParams<T>, T>]
         : [options: RouteOptions<ExtractParams<T>, T>]
@@ -578,7 +578,7 @@ interface NormalizedOptions {
 const EXTRA_KEYS = new Set(["path", "search", "hash", "relative", "base"]);
 
 function normalizeOptions(
-  options?: RouteOptions<string> | RouteExtra,
+  options?: RouteOptions<string> | RouteBuildExtras,
 ): NormalizedOptions {
   if (!options) return { path: {}, search: {} };
 

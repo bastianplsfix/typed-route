@@ -453,7 +453,7 @@ import type {
   ParamValue,        // string | number
   StripModifier,     // strips ?, *, + suffixes from param names
   ExtractParams,     // template literal type — extracts ":param" names
-  RouteExtra,        // extra options (search, hash, relative, base)
+  RouteBuildExtras,        // extra options (search, hash, relative, base)
   RouteOptions,      // options union for route()
   MatchResult,       // return type of matchRoute()
   BoundRoute,        // return type of routePattern()
