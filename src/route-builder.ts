@@ -140,12 +140,19 @@ export interface RouteConfig {
       };
 }
 
+/** Debug info about the resolved base URL source. */
+export interface BaseInfo {
+  base: string;
+  source: "config.base" | `env.${string}` | "window.location.origin" | "config.fallback" | "fallback";
+}
+
 // ---------------------------------------------------------------------------
 // Global config
 // ---------------------------------------------------------------------------
 
 let _config: RouteConfig = {};
 let _resolvedBase: string | undefined;
+let _resolvedSource: BaseInfo["source"] | undefined;
 let _baseLogged = false;
 
 /**
@@ -160,6 +167,7 @@ let _baseLogged = false;
 export function configureRoute(config: RouteConfig): void {
   _config = config;
   _resolvedBase = undefined; // reset cache
+  _resolvedSource = undefined; // reset source cache
   _baseLogged = false; // reset logging state
 }
 
@@ -189,6 +197,17 @@ export function getBaseURL(): string {
  */
 export function getConfig(): Readonly<RouteConfig> {
   return { ..._config };
+}
+
+/**
+ * Get the currently resolved base URL and where it came from.
+ */
+export function getBaseInfo(): BaseInfo {
+  const base = getBase();
+  return {
+    base,
+    source: _resolvedSource ?? "fallback",
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -354,6 +373,14 @@ export function matchRoute<T extends string>(
   validatePattern(pattern as string);
 
   const base = getBase();
+
+  if (typeof URLPattern === "undefined") {
+    throw new Error(
+      "URLPattern is not available in this runtime. " +
+      "Use a URLPattern polyfill or avoid matchRoute() in this environment.",
+    );
+  }
+
   const urlPattern = new URLPattern({ pathname: pattern, baseURL: base });
   const result = urlPattern.exec(url);
 
@@ -489,12 +516,16 @@ function shouldLog(category: "base" | "build" | "match"): boolean {
 }
 
 function getBase(): string {
-  if (_resolvedBase === undefined) _resolvedBase = resolveBase(_config);
+  if (_resolvedBase === undefined) {
+    const resolved = resolveBase(_config);
+    _resolvedBase = resolved.base;
+    _resolvedSource = resolved.source;
+  }
   return _resolvedBase;
 }
 
-function resolveBase(config: RouteConfig): string {
-  let source: string;
+function resolveBase(config: RouteConfig): BaseInfo {
+  let source: BaseInfo["source"];
   let raw: string;
   let env: string | undefined;
 
@@ -532,12 +563,11 @@ function resolveBase(config: RouteConfig): string {
     _baseLogged = true;
   }
 
-  // Warn in dev if using fallback localhost
-  const isFallback = source === "fallback";
-  if (isFallback && base === "http://localhost:3000" && shouldLog("base") && typeof console !== "undefined") {
+  // Warn in dev when localhost base is active (common misconfiguration).
+  if (base === "http://localhost:3000" && shouldLog("base") && typeof console !== "undefined") {
     console.warn(
-      "[typed-route] No API_BASE configured, using fallback: http://localhost:3000. " +
-      "Set API_BASE env var or call configureRoute({ base: '...' })"
+      "[typed-route] Using localhost base: http://localhost:3000. " +
+      "Set API_BASE env var or call configureRoute({ base: '...' }) if unintended."
     );
   }
 
@@ -554,7 +584,7 @@ function resolveBase(config: RouteConfig): string {
     );
   }
 
-  return base;
+  return { base, source };
 }
 
 function envLookup(key: string): string | undefined {

@@ -30,6 +30,7 @@ export {
   createRoute,
   configureRoute,
   getBaseURL,
+  getBaseInfo,
   getConfig,
 } from "./src/route-builder.ts";
 
@@ -42,4 +43,5 @@ export type {
   MatchResult,
   BoundRoute,
   RouteConfig,
+  BaseInfo,
 } from "./src/route-builder.ts";

@@ -7,6 +7,7 @@ import {
   configureRoute,
   getBaseURL,
   getConfig,
+  getBaseInfo,
 } from "../mod.ts";
 
 function setup() {
@@ -663,6 +664,15 @@ Deno.test("options: throws when using top-level path params", () => {
   );
 });
 
+Deno.test("options: throws when using multiple top-level params", () => {
+  setup();
+  assertThrows(
+    () => (route as any)("/api/:org/:id", { org: "acme", id: "42" }),
+    Error,
+    "Invalid route options",
+  );
+});
+
 Deno.test("options: reserved-name params work via explicit path", () => {
   setup();
   assertEquals(
@@ -817,6 +827,25 @@ Deno.test("matchRoute: handles malformed percent sequence without throwing", () 
 });
 
 // ---------------------------------------------------------------------------
+// URLPattern availability
+// ---------------------------------------------------------------------------
+
+Deno.test("matchRoute: throws clear error when URLPattern is unavailable", () => {
+  setup();
+  const original = (globalThis as any).URLPattern;
+  try {
+    (globalThis as any).URLPattern = undefined;
+    assertThrows(
+      () => matchRoute("/api/:id", "http://localhost:3000/api/42"),
+      Error,
+      "URLPattern is not available",
+    );
+  } finally {
+    (globalThis as any).URLPattern = original;
+  }
+});
+
+// ---------------------------------------------------------------------------
 // matchRoute: advanced URLPattern regex syntax
 // ---------------------------------------------------------------------------
 
@@ -868,6 +897,21 @@ Deno.test("getConfig: returns config copy", () => {
   const config = getConfig();
   assertEquals(config.base, "https://api.example.com");
   assertEquals(config.trailingSlash, "strip");
+});
+
+Deno.test("getBaseInfo: returns resolved base and source", () => {
+  configureRoute({ base: "https://api.example.com" });
+  assertEquals(getBaseInfo(), {
+    base: "https://api.example.com",
+    source: "config.base",
+  });
+});
+
+Deno.test("getBaseInfo: reports fallback source", () => {
+  configureRoute({});
+  const info = getBaseInfo();
+  assertEquals(info.base, "http://localhost:3000");
+  assertEquals(info.source, "fallback");
 });
 
 // ---------------------------------------------------------------------------

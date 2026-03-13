@@ -19,7 +19,7 @@ import { route } from "jsr:@bastianplsfix/typed-route";
 // deno add jsr:@bastianplsfix/typed-route
 ```
 
-> **URLPattern support:** Native in Chromium, Node ≥ 23, Deno, and Bun. Firefox requires a [polyfill](https://github.com/kenchris/urlpattern-polyfill). Note: only `matchRoute` needs URLPattern — `route()` works everywhere.
+> **URLPattern support:** Native in Chromium, Node ≥ 23, Deno, and Bun. Firefox requires a [polyfill](https://github.com/kenchris/urlpattern-polyfill). Note: only `matchRoute` needs URLPattern — `route()` works everywhere. If unavailable, `matchRoute()` throws a clear error.
 
 ## Quick start
 
@@ -142,7 +142,7 @@ const fileMatch = matchRoute("/files/:filename.:ext(pdf|doc|txt)", req.url);
 **Perfect for:** Test assertions, debugging, admin panels
 
 ```ts
-import { getBaseURL, getConfig } from "@bastianplsfix/typed-route";
+import { getBaseURL, getBaseInfo, getConfig } from "@bastianplsfix/typed-route";
 
 // Test setup
 beforeEach(() => {
@@ -234,6 +234,8 @@ route("/files/:path+", { path: { path: "docs/readme.md" } }); // → ".../files/
 ```
 
 > **Option shape rule:** Path params must be passed under `path`. Top-level keys are reserved for explicit options: `path`, `search`, `hash`, `relative`, and `base`.
+
+> **Migration note:** Legacy top-level param shorthand is removed. Use `{ path: { ... } }` instead of `{ id: ... }`.
 
 ### `matchRoute(pattern, url)`
 
@@ -358,6 +360,16 @@ if (getBaseURL().includes("localhost")) {
 }
 ```
 
+### `getBaseInfo()`
+
+Get both the resolved base URL and its source.
+
+```ts
+const info = getBaseInfo();
+console.log(info.base);   // "https://api.example.com"
+console.log(info.source); // "config.base" | "env.API_BASE" | "window.location.origin" | ...
+```
+
 ### `getConfig()`
 
 Get the current configuration (read-only copy).
@@ -458,6 +470,7 @@ import type {
   MatchResult,       // return type of matchRoute()
   BoundRoute,        // return type of routePattern()
   RouteConfig,       // config for configureRoute()
+  BaseInfo,          // resolved base debug info
 } from "@bastianplsfix/typed-route";
 ```
 
