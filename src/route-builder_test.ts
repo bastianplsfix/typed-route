@@ -5,6 +5,7 @@ import {
   routePattern,
   createRoute,
   configureRoute,
+  resetRouteConfig,
   getBaseURL,
   getConfig,
   getBaseInfo,
@@ -316,6 +317,23 @@ Deno.test("configureRoute: custom fallback", () => {
 Deno.test("configureRoute: strips trailing slash from base", () => {
   configureRoute({ base: "https://api.example.com/" });
   assertEquals(route("/bookmarks"), "https://api.example.com/bookmarks");
+});
+
+
+Deno.test("resetRouteConfig: clears configured base", () => {
+  configureRoute({ base: "https://api.example.com" });
+  assertEquals(route("/bookmarks"), "https://api.example.com/bookmarks");
+
+  resetRouteConfig();
+  assertEquals(route("/bookmarks"), "http://localhost:3000/bookmarks");
+});
+
+Deno.test("resetRouteConfig: clears cached source info", () => {
+  configureRoute({ base: "https://api.example.com" });
+  assertEquals(getBaseInfo().source, "config.base");
+
+  resetRouteConfig();
+  assertEquals(getBaseInfo().source, "fallback");
 });
 
 // ---------------------------------------------------------------------------

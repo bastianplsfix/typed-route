@@ -140,10 +140,18 @@ export interface RouteConfig {
       };
 }
 
+/** Base URL source literals exposed for diagnostics and testing. */
+export type BaseSource =
+  | "config.base"
+  | `env.${string}`
+  | "window.location.origin"
+  | "config.fallback"
+  | "fallback";
+
 /** Debug info about the resolved base URL source. */
 export interface BaseInfo {
   base: string;
-  source: "config.base" | `env.${string}` | "window.location.origin" | "config.fallback" | "fallback";
+  source: BaseSource;
 }
 
 // ---------------------------------------------------------------------------
@@ -152,7 +160,7 @@ export interface BaseInfo {
 
 let _config: RouteConfig = {};
 let _resolvedBase: string | undefined;
-let _resolvedSource: BaseInfo["source"] | undefined;
+let _resolvedSource: BaseSource | undefined;
 let _baseLogged = false;
 
 /**
@@ -169,6 +177,17 @@ export function configureRoute(config: RouteConfig): void {
   _resolvedBase = undefined; // reset cache
   _resolvedSource = undefined; // reset source cache
   _baseLogged = false; // reset logging state
+}
+
+/**
+ * Reset all route configuration and cached resolution state.
+ * Useful for tests or hot-reload flows.
+ */
+export function resetRouteConfig(): void {
+  _config = {};
+  _resolvedBase = undefined;
+  _resolvedSource = undefined;
+  _baseLogged = false;
 }
 
 /**
@@ -530,7 +549,7 @@ function getBase(): string {
 }
 
 function resolveBase(config: RouteConfig): BaseInfo {
-  let source: BaseInfo["source"];
+  let source: BaseSource;
   let raw: string;
   let env: string | undefined;
 

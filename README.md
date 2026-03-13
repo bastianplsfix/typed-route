@@ -142,7 +142,7 @@ const fileMatch = matchRoute("/files/:filename.:ext(pdf|doc|txt)", req.url);
 **Perfect for:** Test assertions, debugging, admin panels
 
 ```ts
-import { getBaseURL, getBaseInfo, getConfig, isURLPatternSupported } from "@bastianplsfix/typed-route";
+import { getBaseURL, getBaseInfo, getConfig, isURLPatternSupported, resetRouteConfig } from "@bastianplsfix/typed-route";
 
 // Test setup
 beforeEach(() => {
@@ -382,6 +382,9 @@ console.log(info.base);   // "https://api.example.com"
 console.log(info.source); // "config.base" | "env.API_BASE" | "window.location.origin" | ...
 ```
 
+**Env-source testability:** `getBaseInfo().source` reports env-derived values as `"env.<KEY>"` (for example `"env.API_BASE"`), which makes assertions straightforward in tests.
+
+
 ### `isURLPatternSupported()`
 
 Check whether `URLPattern` is available in the current runtime.
@@ -390,6 +393,17 @@ Check whether `URLPattern` is available in the current runtime.
 if (!isURLPatternSupported()) {
   // Install/polyfill URLPattern before using matchRoute()
 }
+```
+
+### `resetRouteConfig()`
+
+Reset all route configuration and cached base-resolution state.
+Useful for tests or hot-reload flows.
+
+```ts
+configureRoute({ base: "https://api.example.com" });
+resetRouteConfig();
+// back to default resolution behavior
 ```
 
 ### `getConfig()`
@@ -492,6 +506,7 @@ import type {
   MatchResult,       // return type of matchRoute()
   BoundRoute,        // return type of routePattern()
   RouteConfig,       // config for configureRoute()
+  BaseSource,        // source literals for resolved base
   BaseInfo,          // resolved base debug info
 } from "@bastianplsfix/typed-route";
 ```

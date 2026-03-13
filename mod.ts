@@ -29,6 +29,7 @@ export {
   routePattern,
   createRoute,
   configureRoute,
+  resetRouteConfig,
   getBaseURL,
   getBaseInfo,
   isURLPatternSupported,
@@ -44,5 +45,6 @@ export type {
   MatchResult,
   BoundRoute,
   RouteConfig,
+  BaseSource,
   BaseInfo,
 } from "./src/route-builder.ts";
