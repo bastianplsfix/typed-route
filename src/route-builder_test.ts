@@ -22,10 +22,10 @@ Deno.test("route: no params", () => {
   assertEquals(route("/api/bookmarks"), "http://localhost:3000/api/bookmarks");
 });
 
-Deno.test("route: single path param (flat shorthand)", () => {
+Deno.test("route: single path param (explicit path)", () => {
   setup();
   assertEquals(
-    route("/api/bookmarks/:id", { id: "42" }),
+    route("/api/bookmarks/:id", { path: { id: "42" } }),
     "http://localhost:3000/api/bookmarks/42",
   );
 });
@@ -33,7 +33,7 @@ Deno.test("route: single path param (flat shorthand)", () => {
 Deno.test("route: multiple path params", () => {
   setup();
   assertEquals(
-    route("/api/:org/bookmarks/:id", { org: "acme", id: "42" }),
+    route("/api/:org/bookmarks/:id", { path: { org: "acme", id: "42" } }),
     "http://localhost:3000/api/acme/bookmarks/42",
   );
 });
@@ -66,7 +66,7 @@ Deno.test("route: array search params", () => {
 Deno.test("route: numeric path param", () => {
   setup();
   assertEquals(
-    route("/api/bookmarks/:id", { id: 42 }),
+    route("/api/bookmarks/:id", { path: { id: 42 } }),
     "http://localhost:3000/api/bookmarks/42",
   );
 });
@@ -74,7 +74,7 @@ Deno.test("route: numeric path param", () => {
 Deno.test("route: encodes path params", () => {
   setup();
   assertEquals(
-    route("/api/search/:query", { query: "hello world" }),
+    route("/api/search/:query", { path: { query: "hello world" } }),
     "http://localhost:3000/api/search/hello%20world",
   );
 });
@@ -82,7 +82,7 @@ Deno.test("route: encodes path params", () => {
 Deno.test("route: always encodes params (no pre-encoded pass-through)", () => {
   setup();
   assertEquals(
-    route("/api/search/:query", { query: "hello%20world" }),
+    route("/api/search/:query", { path: { query: "hello%20world" } }),
     "http://localhost:3000/api/search/hello%2520world",
   );
 });
@@ -226,7 +226,7 @@ Deno.test("routePattern: builds URLs when called", () => {
   setup();
   const bookmarks = routePattern("/api/bookmarks/:id");
   assertEquals(
-    bookmarks({ id: "42" }),
+    bookmarks({ path: { id: "42" } }),
     "http://localhost:3000/api/bookmarks/42",
   );
 });
@@ -276,7 +276,7 @@ Deno.test("routePattern: pattern is read-only", () => {
 
 Deno.test("round-trip: path params survive build → match", () => {
   setup();
-  const url = route("/api/:org/bookmarks/:id", { org: "acme", id: "42" });
+  const url = route("/api/:org/bookmarks/:id", { path: { org: "acme", id: "42" } });
   const result = matchRoute("/api/:org/bookmarks/:id", url);
   assertEquals(result?.path, { org: "acme", id: "42" });
 });
@@ -292,7 +292,7 @@ Deno.test("round-trip: search params survive build → match", () => {
 
 Deno.test("round-trip: encoded path params round-trip correctly", () => {
   setup();
-  const url = route("/api/search/:query", { query: "hello world" });
+  const url = route("/api/search/:query", { path: { query: "hello world" } });
   const result = matchRoute("/api/search/:query", url);
   assertEquals(result?.path, { query: "hello world" });
 });
@@ -468,7 +468,7 @@ Deno.test("optional param: omitted", () => {
 Deno.test("optional param: provided", () => {
   setup();
   assertEquals(
-    route("/api/bookmarks/:id?", { id: "42" }),
+    route("/api/bookmarks/:id?", { path: { id: "42" } }),
     "http://localhost:3000/api/bookmarks/42",
   );
 });
@@ -484,7 +484,7 @@ Deno.test("optional param: no args when all optional", () => {
 Deno.test("optional param: mixed required and optional", () => {
   setup();
   assertEquals(
-    route("/api/:org/bookmarks/:id?", { org: "acme" }),
+    route("/api/:org/bookmarks/:id?", { path: { org: "acme" } }),
     "http://localhost:3000/api/acme/bookmarks",
   );
 });
@@ -492,7 +492,7 @@ Deno.test("optional param: mixed required and optional", () => {
 Deno.test("optional param: mixed required and optional, both provided", () => {
   setup();
   assertEquals(
-    route("/api/:org/bookmarks/:id?", { org: "acme", id: "42" }),
+    route("/api/:org/bookmarks/:id?", { path: { org: "acme", id: "42" } }),
     "http://localhost:3000/api/acme/bookmarks/42",
   );
 });
@@ -525,7 +525,7 @@ Deno.test("optional param: omitted with search params", () => {
 Deno.test("wildcard *: with value", () => {
   setup();
   assertEquals(
-    route("/files/:path*", { path: "docs/readme.md" }),
+    route("/files/:path*", { path: { path: "docs/readme.md" } }),
     "http://localhost:3000/files/docs/readme.md",
   );
 });
@@ -541,7 +541,7 @@ Deno.test("wildcard *: omitted (zero-or-more)", () => {
 Deno.test("wildcard *: single segment", () => {
   setup();
   assertEquals(
-    route("/files/:path*", { path: "readme.md" }),
+    route("/files/:path*", { path: { path: "readme.md" } }),
     "http://localhost:3000/files/readme.md",
   );
 });
@@ -549,7 +549,7 @@ Deno.test("wildcard *: single segment", () => {
 Deno.test("wildcard +: with value", () => {
   setup();
   assertEquals(
-    route("/files/:path+", { path: "docs/readme.md" }),
+    route("/files/:path+", { path: { path: "docs/readme.md" } }),
     "http://localhost:3000/files/docs/readme.md",
   );
 });
@@ -557,7 +557,7 @@ Deno.test("wildcard +: with value", () => {
 Deno.test("wildcard: encodes segments individually", () => {
   setup();
   assertEquals(
-    route("/files/:path*", { path: "my docs/hello world.md" }),
+    route("/files/:path*", { path: { path: "my docs/hello world.md" } }),
     "http://localhost:3000/files/my%20docs/hello%20world.md",
   );
 });
@@ -590,14 +590,14 @@ Deno.test("matchRoute: wildcard param", () => {
 
 Deno.test("round-trip: optional param provided", () => {
   setup();
-  const url = route("/api/bookmarks/:id?", { id: "42" });
+  const url = route("/api/bookmarks/:id?", { path: { id: "42" } });
   const result = matchRoute("/api/bookmarks/:id?", url);
   assertEquals(result?.path.id, "42");
 });
 
 Deno.test("round-trip: wildcard param", () => {
   setup();
-  const url = route("/files/:path*", { path: "docs/readme.md" });
+  const url = route("/files/:path*", { path: { path: "docs/readme.md" } });
   const result = matchRoute("/files/:path*", url);
   assertEquals(result?.path.path, "docs/readme.md");
 });
@@ -609,7 +609,7 @@ Deno.test("round-trip: wildcard param", () => {
 Deno.test("encoding: percent signs are always encoded", () => {
   setup();
   assertEquals(
-    route("/api/search/:query", { query: "100%natural" }),
+    route("/api/search/:query", { path: { query: "100%natural" } }),
     "http://localhost:3000/api/search/100%25natural",
   );
 });
@@ -617,14 +617,14 @@ Deno.test("encoding: percent signs are always encoded", () => {
 Deno.test("encoding: spaces are always encoded", () => {
   setup();
   assertEquals(
-    route("/api/search/:query", { query: "hello world" }),
+    route("/api/search/:query", { path: { query: "hello world" } }),
     "http://localhost:3000/api/search/hello%20world",
   );
 });
 
 Deno.test("encoding: literal %20 round-trips correctly", () => {
   setup();
-  const url = route("/api/search/:query", { query: "%20" });
+  const url = route("/api/search/:query", { path: { query: "%20" } });
   assertEquals(url, "http://localhost:3000/api/search/%2520");
   const result = matchRoute("/api/search/:query", url);
   assertEquals(result?.path, { query: "%20" });
@@ -651,24 +651,15 @@ Deno.test("trailing slash: strip mode with hash and query", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Edge cases: flat params named like extra keys
+// Edge cases: top-level params are rejected
 // ---------------------------------------------------------------------------
 
-Deno.test("options: throws when flat params mix with reserved extra key 'search'", () => {
+Deno.test("options: throws when using top-level path params", () => {
   setup();
   assertThrows(
-    () => (route as any)("/api/:search/:id", { search: "users", id: "42" }),
+    () => (route as any)("/api/:id", { id: "42" }),
     Error,
-    "Ambiguous route options",
-  );
-});
-
-Deno.test("options: throws when flat params mix with reserved extra key 'relative'", () => {
-  setup();
-  assertThrows(
-    () => (route as any)("/api/:relative/:id", { relative: "yes", id: "42" }),
-    Error,
-    "Ambiguous route options",
+    "Invalid route options",
   );
 });
 
@@ -747,7 +738,7 @@ Deno.test("routePattern: optional-only pattern callable with args", () => {
   setup();
   const optRoute = routePattern("/api/bookmarks/:id?");
   assertEquals(
-    optRoute({ id: "42" }),
+    optRoute({ path: { id: "42" } }),
     "http://localhost:3000/api/bookmarks/42",
   );
 });
@@ -756,7 +747,7 @@ Deno.test("routePattern: wildcard+ pattern callable with args", () => {
   setup();
   const files = routePattern("/files/:p+");
   assertEquals(
-    files({ p: "docs/readme.md" }),
+    files({ path: { p: "docs/readme.md" } }),
     "http://localhost:3000/files/docs/readme.md",
   );
 });
@@ -807,7 +798,7 @@ Deno.test("options: hash+base top-level keys are treated as explicit extras", ()
 Deno.test("replaceParams: duplicate param name replaced in all positions", () => {
   setup();
   assertEquals(
-    (route as any)("/api/:id/copy/:id", { id: "42" }),
+    (route as any)("/api/:id/copy/:id", { path: { id: "42" } }),
     "http://localhost:3000/api/42/copy/42",
   );
 });
@@ -856,7 +847,7 @@ Deno.test("createRoute: works as alias for routePattern", () => {
   setup();
   const users = createRoute("/api/users/:id");
   assertEquals(users.pattern, "/api/users/:id");
-  assertEquals(users({ id: "42" }), "http://localhost:3000/api/users/42");
+  assertEquals(users({ path: { id: "42" } }), "http://localhost:3000/api/users/42");
   assertEquals(
     users.match("http://localhost:3000/api/users/42")?.path,
     { id: "42" },

@@ -29,7 +29,7 @@ import { route } from "@bastianplsfix/typed-route";
 // In a TanStack Query hook
 useSuspenseQuery({
   queryKey: ["bookmarks", id],
-  queryFn: () => fetch(route("/api/bookmarks/:id", { id })).then(r => r.json()),
+  queryFn: () => fetch(route("/api/bookmarks/:id", { path: { id } })).then(r => r.json()),
 });
 ```
 
@@ -57,13 +57,13 @@ const userRoute = createRoute("/api/users/:id");
 function useUser(id: string) {
   return useSuspenseQuery({
     queryKey: [userRoute.pattern, id],
-    queryFn: () => fetch(userRoute({ id })).then(r => r.json())
+    queryFn: () => fetch(userRoute({ path: { id } })).then(r => r.json())
   });
 }
 
 // Form submissions
 async function updateUser(id: string, data: UserData) {
-  await fetch(route("/api/users/:id", { id }), {
+  await fetch(route("/api/users/:id", { path: { id } }), {
     method: "PUT",
     body: JSON.stringify(data)
   });
@@ -177,8 +177,8 @@ function ApiStatus() {
 Build a full URL from a pattern and params.
 
 ```ts
-// Flat shorthand — all values are path params
-route("/api/bookmarks/:id", { id: "42" });
+// Explicit path params
+route("/api/bookmarks/:id", { path: { id: "42" } });
 // → "http://localhost:3000/api/bookmarks/42"
 
 // Explicit path + search
@@ -223,17 +223,17 @@ route("/api/users/:id", {
 
 // Optional param — omit or provide
 route("/api/bookmarks/:id?", {});           // → ".../api/bookmarks"
-route("/api/bookmarks/:id?", { id: "42" }); // → ".../api/bookmarks/42"
+route("/api/bookmarks/:id?", { path: { id: "42" } }); // → ".../api/bookmarks/42"
 
 // Wildcard — zero-or-more segments (slashes preserved)
-route("/files/:path*", { path: "docs/readme.md" }); // → ".../files/docs/readme.md"
+route("/files/:path*", { path: { path: "docs/readme.md" } }); // → ".../files/docs/readme.md"
 route("/files/:path*");                              // → ".../files"
 
 // Wildcard — one-or-more segments (required)
-route("/files/:path+", { path: "docs/readme.md" }); // → ".../files/docs/readme.md"
+route("/files/:path+", { path: { path: "docs/readme.md" } }); // → ".../files/docs/readme.md"
 ```
 
-> **Option shape rule:** Top-level keys `path`, `search`, `hash`, `relative`, and `base` are reserved for explicit options. If your param names use any of those keys, pass params via `path` (e.g. `route("/api/:search", { path: { search: "users" } })`).
+> **Option shape rule:** Path params must be passed under `path`. Top-level keys are reserved for explicit options: `path`, `search`, `hash`, `relative`, and `base`.
 
 ### `matchRoute(pattern, url)`
 
@@ -287,7 +287,7 @@ const bookmarks = routePattern("/api/bookmarks/:id");
 // Use .pattern for query keys
 useSuspenseQuery({
   queryKey: [bookmarks.pattern, id],
-  queryFn: () => fetch(bookmarks({ id })).then(r => r.json()),
+  queryFn: () => fetch(bookmarks({ path: { id } })).then(r => r.json()),
 });
 
 // Match incoming URLs
@@ -373,12 +373,12 @@ console.log("Trailing slash:", config.trailingSlash);
 Param names are extracted from the pattern string literal at compile time:
 
 ```ts
-route("/api/bookmarks/:id", { id: "42" });          // ✅
-route("/api/bookmarks/:id", { name: "oops" });       // ❌ type error
-route("/api/:org/bookmarks/:id", { org: "acme" });   // ❌ missing `id`
+route("/api/bookmarks/:id", { path: { id: "42" } });          // ✅
+route("/api/bookmarks/:id", { path: { name: "oops" } });       // ❌ type error
+route("/api/:org/bookmarks/:id", { path: { org: "acme" } });   // ❌ missing `id`
 route("/api/bookmarks");                              // ✅ no params required
 route("/api/bookmarks/:id?");                         // ✅ optional — args can be omitted
-route("/api/:org/bookmarks/:id?", { org: "acme" });  // ✅ only required params needed
+route("/api/:org/bookmarks/:id?", { path: { org: "acme" } });  // ✅ only required params needed
 ```
 
 ### Optional and wildcard modifiers
@@ -402,18 +402,18 @@ The pattern declares your URL's contract. If you have a value that might be `und
 const userId: string | undefined = session?.userId;
 
 // ❌ Type error - pattern says :id is required, but userId might be undefined
-route("/api/users/:id", { id: userId });
+route("/api/users/:id", { path: { id: userId } });
 
 // ✅ Option 1: Make the pattern match reality
-route("/api/users/:id?", { id: userId });
+route("/api/users/:id?", { path: { id: userId } });
 
 // ✅ Option 2: Guard it explicitly
 if (userId) {
-  route("/api/users/:id", { id: userId });
+  route("/api/users/:id", { path: { id: userId } });
 }
 
 // ✅ Option 3: Provide a fallback
-route("/api/users/:id", { id: userId || "me" });
+route("/api/users/:id", { path: { id: userId || "me" } });
 ```
 
 This is intentional — the pattern syntax should match your data's optionality. It prevents bugs where you forget to handle missing params.

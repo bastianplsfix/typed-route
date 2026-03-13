@@ -10,7 +10,7 @@
  * // In your queryFn — just works
  * useSuspenseQuery({
  *   queryKey: ["bookmarks", id],
- *   queryFn: () => fetch(route("/api/bookmarks/:id", { id })).then(r => r.json()),
+ *   queryFn: () => fetch(route("/api/bookmarks/:id", { path: { id } })).then(r => r.json()),
  * });
  *
  * // With search params
@@ -75,22 +75,18 @@ export interface RouteExtra {
 }
 
 /**
- * When the pattern has no params, options are optional (search-only or omitted).
- * When it has params, you must provide them — either as a flat object or via `{ path }`.
- * Optional-only patterns allow omitting the options argument entirely.
+ * Explicit options object for route building.
+ *
+ * - Patterns with required params require `path`.
+ * - Patterns with only optional params allow omitting `path` (or options entirely).
+ * - Patterns with no params accept `RouteExtra` (or no options).
  */
 export type RouteOptions<K extends string = string, T extends string = string> =
   [K] extends [never]
     ? RouteExtra | undefined
     : [RequiredParams<T>] extends [never]
-      ? | Partial<Record<K, ParamValue>>
-        | ({ path?: Partial<Record<K, ParamValue>> } & RouteExtra)
-        | undefined
-      : [OptionalParams<T>] extends [never]
-        ? | Record<K, ParamValue>
-          | ({ path: Record<K, ParamValue> } & RouteExtra)
-        : | (Record<RequiredParams<T>, ParamValue> & Partial<Record<OptionalParams<T>, ParamValue>>)
-          | ({ path: Record<RequiredParams<T>, ParamValue> & Partial<Record<OptionalParams<T>, ParamValue>> } & RouteExtra);
+      ? ({ path?: Partial<Record<K, ParamValue>> } & RouteExtra) | undefined
+      : ({ path: Record<RequiredParams<T>, ParamValue> & Partial<Record<OptionalParams<T>, ParamValue>> } & RouteExtra);
 
 /** Result of matching a URL against a pattern via {@linkcode matchRoute}. */
 export interface MatchResult<K extends string = string> {
@@ -260,10 +256,10 @@ function rejectRegexPattern(pattern: string): void {
  *
  * @example
  * ```ts
- * // Shorthand — flat object = path params
- * route("/api/bookmarks/:id", { id: "42" });
+ * // Path params
+ * route("/api/bookmarks/:id", { path: { id: "42" } });
  *
- * // Explicit path + search
+ * // Path + search
  * route("/api/bookmarks/:id", {
  *   path: { id: "42" },
  *   search: { fields: "title,url" },
@@ -282,13 +278,13 @@ export function route<T extends string>(
   ...[options]: [ExtractParams<T>] extends [never]
     ? [options?: RouteExtra]
     : [RequiredParams<T>] extends [never]
-      ? [options?: RouteOptions<ExtractParams<T>, T> | RouteExtra]
+      ? [options?: RouteOptions<ExtractParams<T>, T>]
       : [options: RouteOptions<ExtractParams<T>, T>]
 ): string {
   validatePattern(pattern as string);
   rejectRegexPattern(pattern as string);
 
-  const normalized = normalizeOptions(options, pattern as string);
+  const normalized = normalizeOptions(options);
   const base = normalized.base ? strip(normalized.base) : getBase();
 
   let pathname = replaceParams(pattern as string, normalized.path);
@@ -415,7 +411,7 @@ export interface BoundRoute<T extends string> {
     ...args: [ExtractParams<T>] extends [never]
       ? [options?: RouteExtra]
       : [RequiredParams<T>] extends [never]
-        ? [options?: RouteOptions<ExtractParams<T>, T> | RouteExtra]
+        ? [options?: RouteOptions<ExtractParams<T>, T>]
         : [options: RouteOptions<ExtractParams<T>, T>]
   ): string;
 
@@ -432,7 +428,7 @@ export interface BoundRoute<T extends string> {
  *
  * useSuspenseQuery({
  *   queryKey: [bookmarks.pattern, id],
- *   queryFn: () => fetch(bookmarks({ id })).then(r => r.json()),
+ *   queryFn: () => fetch(bookmarks({ path: { id } })).then(r => r.json()),
  * });
  *
  * // Also works for matching
@@ -583,47 +579,37 @@ const EXTRA_KEYS = new Set(["path", "search", "hash", "relative", "base"]);
 
 function normalizeOptions(
   options?: RouteOptions<string> | RouteExtra,
-  _pattern?: string,
 ): NormalizedOptions {
   if (!options) return { path: {}, search: {} };
 
   const obj = options as Record<string, unknown>;
   const keys = Object.keys(obj);
 
-  const hasExtraKey = keys.some((k) => EXTRA_KEYS.has(k));
   const hasNonExtraKey = keys.some((k) => !EXTRA_KEYS.has(k));
-
-  // Reduce ambiguity: mixing reserved extra keys with flat params is not allowed.
-  // Use explicit `{ path, ...extras }` form instead.
-  if (hasExtraKey && hasNonExtraKey) {
+  if (hasNonExtraKey) {
     throw new Error(
-      'Ambiguous route options: cannot mix flat params with reserved keys ' +
-      '("path", "search", "hash", "relative", "base"). ' +
+      'Invalid route options: top-level params are no longer supported. ' +
       'Use explicit form: { path: {...}, search?, hash?, relative?, base? }.',
     );
   }
 
-  // Explicit-form options.
-  if (hasExtraKey) {
-    const explicit = options as {
-      path?: Record<string, ParamValue>;
-      search?: Record<string, string | string[]>;
-      hash?: string;
-      relative?: boolean;
-      base?: string;
-    };
-    return {
-      path: explicit.path ?? {},
-      search: explicit.search ?? {},
-      hash: explicit.hash,
-      relative: explicit.relative,
-      base: explicit.base,
-    };
-  }
+  const explicit = options as {
+    path?: Record<string, ParamValue>;
+    search?: Record<string, string | string[]>;
+    hash?: string;
+    relative?: boolean;
+    base?: string;
+  };
 
-  // Flat shorthand → all top-level keys are treated as path params.
-  return { path: obj as Record<string, ParamValue>, search: {} };
+  return {
+    path: explicit.path ?? {},
+    search: explicit.search ?? {},
+    hash: explicit.hash,
+    relative: explicit.relative,
+    base: explicit.base,
+  };
 }
+
 
 /**
  * Replace `:param`, `:param?`, `:param*`, `:param+` tokens in a pathname.
