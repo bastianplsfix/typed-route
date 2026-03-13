@@ -204,10 +204,8 @@ export function getConfig(): Readonly<RouteConfig> {
  */
 export function getBaseInfo(): BaseInfo {
   const base = getBase();
-  return {
-    base,
-    source: _resolvedSource as BaseInfo["source"],
-  };
+  const source = _resolvedSource ?? "fallback";
+  return { base, source };
 }
 
 /**

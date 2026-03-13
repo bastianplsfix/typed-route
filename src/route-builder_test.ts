@@ -927,6 +927,31 @@ Deno.test("getBaseInfo: reports fallback source", () => {
   assertEquals(info.source, "fallback");
 });
 
+
+Deno.test("getBaseInfo: reports env source", () => {
+  const key = "API_BASE";
+  const prev = typeof process !== "undefined" ? process.env[key] : undefined;
+  try {
+    if (typeof process !== "undefined") {
+      process.env[key] = "https://env.example.com";
+    }
+    configureRoute({});
+    assertEquals(getBaseInfo(), {
+      base: "https://env.example.com",
+      source: "env.API_BASE",
+    });
+  } finally {
+    if (typeof process !== "undefined") {
+      if (prev === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = prev;
+      }
+    }
+    configureRoute({ base: "http://localhost:3000" });
+  }
+});
+
 // ---------------------------------------------------------------------------
 // route: rejects regex patterns (matchRoute does not)
 // ---------------------------------------------------------------------------

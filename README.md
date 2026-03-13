@@ -237,6 +237,18 @@ route("/files/:path+", { path: { path: "docs/readme.md" } }); // → ".../files/
 
 > **Migration note:** Legacy top-level param shorthand is removed. Use `{ path: { ... } }` instead of `{ id: ... }`.
 
+### Breaking changes (explicit `path` options)
+
+`route()` no longer accepts top-level path params.
+
+```ts
+// Before
+route("/api/users/:id", { id: "42" });
+
+// After
+route("/api/users/:id", { path: { id: "42" } });
+```
+
 ### `matchRoute(pattern, url)`
 
 Match a URL against a pattern and extract params. Returns `null` on mismatch.
